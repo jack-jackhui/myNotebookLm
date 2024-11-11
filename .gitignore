@@ -1,0 +1,14 @@
+venv
+venv/*
+source_files/*
+.env
+/.idea/
+.DS_Store
+/*/__pycache_ls_/*
+music/*
+data/audio/podcast/*
+data/audio/tmp/*
+first_episode_flag.txt
+test_*.py
+temp_audio/*
+*.yaml

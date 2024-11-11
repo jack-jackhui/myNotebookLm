@@ -8,6 +8,7 @@ source_files/*
 music/*
 data/audio/podcast/*
 data/audio/tmp/*
+data/transcripts/*
 first_episode_flag.txt
 test_*.py
 temp_audio/*

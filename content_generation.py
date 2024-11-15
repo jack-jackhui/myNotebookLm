@@ -1,17 +1,41 @@
 # content_generation.py
 
+# from config import load_conversation_config, LLM_PROVIDER, AZURE_OPENAI_CONFIG, OPENAI_CONFIG, OLLAMA_CONFIG
+from openai_content_generator import OpenAIContentGenerator
+from ollama_content_generator import OllamaContentGenerator
 from azure_content_generator import AzureContentGenerator
-from config import load_conversation_config
+from config import load_conversation_config, load_llm_config
+
+def create_content_generator():
+    config = load_llm_config()
+    provider = config.get('llm_provider', {}).get('provider')
+    conversation_config = load_conversation_config()
+
+    """Dynamically initialize the appropriate ContentGenerator based on configuration."""
+    if provider == 'azure':
+        azure_config = config['llm_provider'].get('azure', {})
+        return AzureContentGenerator(conversation_config=conversation_config, api_config=azure_config)
+    elif provider == 'openai':
+        openai_config = config['llm_provider'].get('openai', {})
+        return OpenAIContentGenerator(conversation_config=conversation_config, api_config=openai_config)
+    elif provider == 'ollama':
+        ollama_config = config['llm_provider'].get('ollama', {})
+        return OllamaContentGenerator(conversation_config=conversation_config, api_config=ollama_config)
+    else:
+        raise ValueError(f"Unsupported LLM provider: {provider}")
 
 def generate_conversation_script(
     combined_text: str,
     podcast_title: str,
     podcast_description: str,
-    azure_openai_config: dict,
-    conversation_config_path: str = 'conversation_config.yaml',
     is_first_episode: bool = False,
     topics: dict = None
 ) -> str:
+
+    # Initialize the appropriate content generator based on LLM provider
+    content_generator = create_content_generator()
+
+    """
     if not azure_openai_config:
         raise ValueError("Azure OpenAI configuration is missing.")
 
@@ -22,6 +46,7 @@ def generate_conversation_script(
     content_generator = AzureContentGenerator(
         conversation_config=conversation_config
     )
+    """
 
     # Generate opening section
     print("Generating opening segment...")

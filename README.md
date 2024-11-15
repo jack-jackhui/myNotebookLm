@@ -3,7 +3,8 @@
 MyNoteBookLm is an open-source, AI-powered notebook & podcast application inspired by Google’s NotebookLM. 
 This project aims to provide users with a fully customizable and privacy-focused tool for note-taking, knowledge management, and podcast generation. 
 Users can set up their own environment and integrate various LLM and TTS services. 
-By default, MyNoteBookLm assumes Microsoft Azure OpenAI as the LLM provider.
+By default, MyNoteBookLm assumes Microsoft Azure OpenAI as the LLM provider. 
+User can also use alternative LLMs such as OpenAI, or local LLMs via Ollama. 
 
 ## Features
 
@@ -11,6 +12,8 @@ By default, MyNoteBookLm assumes Microsoft Azure OpenAI as the LLM provider.
 - **LLM-Powered Knowledge Management**: Uses a large language model to provide contextual insights, organize information, and offer AI-driven suggestions.
 - **Podcast Generation**: Automatically generates podcasts from notes and curated content with multiple TTS provider options.
 - **Flexible API Integrations**: Supports a range of LLM and TTS providers, with Microsoft Azure OpenAI as the default LLM provider.
+- **User Interface**: A web-based UI powered by Streamlit for an intuitive and accessible experience.
+- **Multi-LLM Support**: Supports multiple LLMs such as MS Azure, OpenAI or local LLMs via Ollama.
 
 ## Getting Started
 
@@ -23,6 +26,8 @@ By default, MyNoteBookLm assumes Microsoft Azure OpenAI as the LLM provider.
 
 #### Large Language Model (LLM) Providers
 - **Microsoft Azure OpenAI** (default)
+- **OpenAI API**
+- **Ollama** (local model support)
 
 #### Text-to-Speech (TTS) Providers
 - **ElevenLabs**
@@ -60,6 +65,11 @@ AZURE_OPENAI_ENDPOINT=<Your Azure OpenAI Endpoint>
 AZURE_OPENAI_MODEL_NAME=<Your Model Name>
 AZURE_OPENAI_API_VERSION=<Your API Version>
 
+OPENAI_API_KEY=<Your OpenAI API Key>
+
+OLLAMA_HOST=<Ollama Host URL>
+OLLAMA_PORT=<Ollama Port>
+
 ELEVENLABS_API_KEY=<Your ElevenLabs API Key>
 
 PODCAST_TITLE="Your Podcast Title"
@@ -68,28 +78,92 @@ PODCAST_DESCRIPTION="Description of your podcast content"
 
 Replace <Your Azure OpenAI API Key>, etc., with your actual API keys.
 
-#### 4. Run MyNoteBookLm
+#### 4. Configure YAML Settings
+Provide a config.yaml file in the root directory with your personal settings. Here’s an example:
+```yaml
+output_directories:
+  transcripts: "./data/transcripts"
+  audio: "./data/audio"
+
+conversation_config_path: "./configs/conversation_config.yaml"
+INTRO_MUSIC_PATH: "./music/intro_music2.mp3"
+OUTRO_MUSIC_PATH: "./music/intro_music2.mp3"
+
+llm_provider:
+  # Set the LLM provider, options: "azure", "openai", "ollama"
+  provider: "openai"
+  azure:
+    endpoint: "your-azure-endpoint"
+    model_name: "gpt-4"
+    api_version: "2023-05-15"
+  openai:
+    model_name: "gpt-4"
+  ollama:
+    model_name: "llama3.2"  # Example local LLM model
+    host: "localhost"
+    port: 11434
+
+content_extractor:
+  youtube_url_patterns:
+    - "youtube.com"
+    - "youtu.be"
+
+youtube_transcriber:
+  remove_phrases:
+    - "[music]"
+
+logging:
+  level: "INFO"
+  format: "%(asctime)s - %(name)s - %(levelname)s - %(message)s"
+
+website_extractor:
+  markdown_cleaning:
+    remove_patterns:
+      - '\[.*?\]'  # Remove square brackets and their contents
+      - '\(.*?\)'  # Remove parentheses and their contents
+      - '^\s*[-*]\s'  # Remove list item markers
+      - '^\s*\d+\.\s'  # Remove numbered list markers
+      - '^\s*#+'  # Remove markdown headers
+  unwanted_tags:
+    - 'script'
+    - 'style'
+    - 'nav'
+    - 'footer'
+    - 'header'
+    - 'aside'
+    - 'noscript'
+  user_agent: 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/91.0.4472.124 Safari/537.36'
+  timeout: 10  # Request timeout in seconds
+```
+
+
+#### 5. Run MyNoteBookLm
 
 To start the app, run:
 ```
 python main.py
 ```
 
+To start the Streamlit-based web UI, run:
+```
+Streamlit run webui.py
+```
+
 ## Usage
 
 ### Note-Taking and Knowledge Management (Coming Soon)
 
-• Use the LLM to organize your notes, get insights, suggest tags, summarize, and answer questions based on your notes.
+- **Use** the LLM to organize your notes, get insights, suggest tags, summarize, and answer questions based on your notes.
 
 ### Podcast Generation
 
 MyNoteBookLm offers an automated podcast feature that converts notes or curated content into audio episodes. You can choose your preferred TTS provider in the .env file.
 
 Supported TTS Providers:
-• OpenAI TTS: High-quality, natural-sounding TTS
-• ElevenLabs: High-quality, natural-sounding TTS
-• Microsoft Azure Text-to-Speech: Provides various voices and languages
-• Edge TTS and OpenAI TTS: Additional TTS options with good flexibility
+- OpenAI TTS: High-quality, natural-sounding TTS
+- ElevenLabs: High-quality, natural-sounding TTS
+- Microsoft Azure Text-to-Speech: Provides various voices and languages
+- Edge TTS and OpenAI TTS: Additional TTS options with good flexibility
 
 To generate and upload a podcast episode:
 ```

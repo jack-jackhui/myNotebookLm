@@ -3,13 +3,11 @@ import os
 import re
 import asyncio
 from config import (
-    AZURE_OPENAI_API_KEY,
-    AZURE_OPENAI_ENDPOINT,
-    AZURE_OPENAI_MODEL_NAME,
-    AZURE_OPENAI_API_VERSION,
-    ELEVENLABS_API_KEY,
     PODCAST_TITLE,
     PODCAST_DESCRIPTION,
+    conversation_config_path,
+    INTRO_MUSIC_PATH,
+    OUTRO_MUSIC_PATH,
 )
 from content_extraction import extract_content_from_sources
 from content_generation import generate_conversation_script
@@ -24,19 +22,24 @@ FIRST_EPISODE_FLAG_FILE = 'first_episode_flag.txt'
 # Define the path to the intro and outro music file
 INTRO_MUSIC_PATH = './music/intro_music2.mp3'
 OUTRO_MUSIC_PATH = './music/intro_music2.mp3'
+
+
 def is_first_episode():
     """Check if this is the first episode."""
     return not os.path.exists(FIRST_EPISODE_FLAG_FILE)
+
 
 def clean_html(raw_html):
     """Remove HTML tags from a string."""
     clean_text = re.sub(r'<.*?>', '', raw_html)
     return clean_text
 
+
 def set_first_episode_done():
     """Set that the first episode has been published."""
     with open(FIRST_EPISODE_FLAG_FILE, 'w') as f:
         f.write("First episode published.")
+
 
 def split_topics(combined_text):
     """Split combined text into topics based on keywords."""
@@ -66,8 +69,8 @@ def split_topics(combined_text):
 async def generate_and_upload_podcast():
     try:
         # Ensure API keys are available
-        if not all([AZURE_OPENAI_API_KEY, AZURE_OPENAI_ENDPOINT, ELEVENLABS_API_KEY]):
-            raise ValueError("One or more API keys are missing.")
+        # if not all([AZURE_OPENAI_API_KEY, AZURE_OPENAI_ENDPOINT, ELEVENLABS_API_KEY]):
+        #    raise ValueError("One or more API keys are missing.")
 
         print(f"Fetching recent articles for podcast generation at {datetime.now()}...")
 
@@ -82,7 +85,7 @@ async def generate_and_upload_podcast():
         print("\nFetched Article Titles and Content for Verification:")
         for i, article in enumerate(articles, 1):
             print(f"Article {i}: {article['title']}")
-            #print(f"Content:\n{article['content']}\n")
+            # print(f"Content:\n{article['content']}\n")
 
         # Add paths to any local files you want to include
         local_files = [
@@ -99,9 +102,9 @@ async def generate_and_upload_podcast():
         print("\n--- Topics and Content Verification ---")
         for topic, content in topics.items():
             print(f"Topic: {topic}")
-            #print(f"Content: {content}\n" if content else "No content found for this topic.\n")
+            # print(f"Content: {content}\n" if content else "No content found for this topic.\n")
 
-
+        """
         # Azure OpenAI configuration dictionary
         azure_openai_config = {
             'openai_api_key': AZURE_OPENAI_API_KEY,
@@ -112,6 +115,7 @@ async def generate_and_upload_podcast():
         }
 
         conversation_config_path: str = 'conversation_config.yaml'
+        """
 
         # Generate the conversation script, passing topics for iterative generation
         print("Generating conversation script...")
@@ -119,8 +123,6 @@ async def generate_and_upload_podcast():
             combined_text=combined_text,
             podcast_title=PODCAST_TITLE,
             podcast_description=PODCAST_DESCRIPTION,
-            azure_openai_config=azure_openai_config,  # Pass the Azure OpenAI config
-            conversation_config_path=conversation_config_path,
             is_first_episode=is_first_episode(),
             topics=topics  # Pass the topics to enable iterative generation
         )
@@ -180,6 +182,7 @@ async def generate_and_upload_podcast():
     except Exception as e:
         print(f"An error occurred: {e}")
         sys.exit(1)
+
 
 if __name__ == '__main__':
     asyncio.run(generate_and_upload_podcast())

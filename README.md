@@ -148,10 +148,15 @@ To start the Streamlit-based web UI, run:
 ```
 Streamlit run webui.py
 ```
+- By default, the Streamlit UI requires authentication with a backend.
+- This can be disabled by updating `config.py`:
+```python
+REQUIRE_LOGIN = True  # Set to False to disable login requirement
+```
 
 ## Usage
 
-### Note-Taking and Knowledge Management (Coming Soon)
+### Note-Taking and Knowledge Management (With WebUI)
 
 - **Use** the LLM to organize your notes, get insights, suggest tags, summarize, and answer questions based on your notes.
 

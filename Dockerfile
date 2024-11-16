@@ -9,6 +9,12 @@ ENV PYTHONUNBUFFERED 1
 # Set work directory
 WORKDIR /mynotebooklm
 
+# Install system dependencies, including ffmpeg
+RUN apt-get update && apt-get install -y --no-install-recommends \
+    ffmpeg \
+    && apt-get clean \
+    && rm -rf /var/lib/apt/lists/*
+
 # Install dependencies
 COPY requirements.txt /mynotebooklm
 RUN pip install --upgrade pip && \

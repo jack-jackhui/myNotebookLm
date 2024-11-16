@@ -8,6 +8,7 @@ from config import (
     conversation_config_path,
     INTRO_MUSIC_PATH,
     OUTRO_MUSIC_PATH,
+    FIRST_EPISODE_FLAG_FILE
 )
 from content_extraction import extract_content_from_sources
 from content_generation import generate_conversation_script
@@ -15,14 +16,6 @@ from text_to_speech_conversion import convert_script_to_audio
 from upload_podcast import upload_podcast_episode
 from news_tracker import get_recent_articles
 from datetime import datetime
-
-# File that tracks whether the first episode intro has been used
-FIRST_EPISODE_FLAG_FILE = 'first_episode_flag.txt'
-
-# Define the path to the intro and outro music file
-INTRO_MUSIC_PATH = './music/intro_music2.mp3'
-OUTRO_MUSIC_PATH = './music/intro_music2.mp3'
-
 
 def is_first_episode():
     """Check if this is the first episode."""

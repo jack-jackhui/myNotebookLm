@@ -66,6 +66,8 @@ OLLAMA_CONFIG = config['llm_provider'].get('ollama', {})
 INTRO_MUSIC_PATH = config.get("INTRO_MUSIC_PATH")
 OUTRO_MUSIC_PATH = config.get("OUTRO_MUSIC_PATH")
 
+FIRST_EPISODE_FLAG_FILE = config.get("FIRST_EPISODE_FLAG_FILE")
+
 # Extract the path to conversation_config.yaml
 conversation_config_path = config.get("conversation_config_path", "conversation_config.yaml")
 

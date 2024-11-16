@@ -1,7 +1,6 @@
-LABEL authors="jackhui"
-
 # Use an official Python runtime as a parent image
 FROM python:3.12
+LABEL authors="jackhui"
 
 # Set environment varibles
 ENV PYTHONDONTWRITEBYTECODE 1

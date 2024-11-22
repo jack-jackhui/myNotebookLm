@@ -4,6 +4,11 @@ import yaml
 
 load_dotenv()
 
+# WORDPRESS Site settings
+WORDPRESS_SITE = os.getenv("WORDPRESS_SITE")
+WORDPRESS_USERNAME = os.getenv("WORDPRESS_USERNAME")
+WORDPRESS_APP_PASSWORD = os.getenv("WORDPRESS_APP_PASSWORD")
+
 # Azure OpenAI API settings
 OPENAI_API_KEY = os.getenv("OPENAI_API_KEY")
 AZURE_OPENAI_API_KEY = os.getenv('AZURE_OPENAI_API_KEY')
@@ -70,6 +75,10 @@ FIRST_EPISODE_FLAG_FILE = config.get("FIRST_EPISODE_FLAG_FILE")
 
 # Extract the path to conversation_config.yaml
 conversation_config_path = config.get("conversation_config_path", "conversation_config.yaml")
+
+def load_rss_feeds():
+    """Load RSS feeds from the YAML configuration."""
+    return config.get("rss_feeds", [])
 
 def load_conversation_config():
     with open(conversation_config_path, 'r') as f:

@@ -151,7 +151,6 @@ async def generate_and_upload_podcast():
         await convert_script_to_audio(
             script_text=script,
             output_audio_file=output_audio_file,
-            conversation_config_path=conversation_config_path,
             intro_music_path=INTRO_MUSIC_PATH,
             outro_music_path=OUTRO_MUSIC_PATH
         )

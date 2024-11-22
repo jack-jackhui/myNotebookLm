@@ -104,8 +104,8 @@ def validate_mp3(file_path):
         return False
 
 
-async def convert_script_to_audio(script_text, output_audio_file, conversation_config_path='conversation_config.yaml', intro_music_path=None, outro_music_path=None):
-    conversation_config = load_conversation_config(conversation_config_path)
+async def convert_script_to_audio(script_text, output_audio_file, intro_music_path=None, outro_music_path=None):
+    conversation_config = load_conversation_config()
     tts_provider = conversation_config.get('text_to_speech', {}).get('default_tts_provider', 'elevenlabs')
 
     logger.info(f"Using TTS provider: {tts_provider}")

@@ -272,4 +272,4 @@ Thank you to the Podcastfy team for providing a foundation that helped shape thi
 
 ## License
 
-This project is licensed under the MIT License.
+Check the LICENSE file for details.

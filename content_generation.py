@@ -11,15 +11,23 @@ def create_content_generator():
     provider = config.get('llm_provider', {}).get('provider')
     conversation_config = load_conversation_config()
 
+    print(f"Selected LLM Provider: {provider}")
+
     """Dynamically initialize the appropriate ContentGenerator based on configuration."""
     if provider == 'azure':
         azure_config = config['llm_provider'].get('azure', {})
+        if not azure_config:
+            raise ValueError("Azure configuration is missing or incomplete.")
         return AzureContentGenerator(conversation_config=conversation_config, api_config=azure_config)
     elif provider == 'openai':
         openai_config = config['llm_provider'].get('openai', {})
+        if not openai_config:
+            raise ValueError("OpenAi configuration is missing or incomplete.")
         return OpenAIContentGenerator(conversation_config=conversation_config, api_config=openai_config)
     elif provider == 'ollama':
         ollama_config = config['llm_provider'].get('ollama', {})
+        if not ollama_config:
+            raise ValueError("Ollama configuration is missing or incomplete.")
         return OllamaContentGenerator(conversation_config=conversation_config, api_config=ollama_config)
     else:
         raise ValueError(f"Unsupported LLM provider: {provider}")

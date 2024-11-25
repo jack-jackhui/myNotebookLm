@@ -40,7 +40,7 @@ DJANGO_BACKEND_URL = os.getenv("DJANGO_BACKEND_URL")
 API_KEY = os.getenv("API_KEY")
 FRONTENDURL = os.getenv("FRONTENDURL")
 
-REQUIRE_LOGIN = True  # Set to False to disable login requirement
+REQUIRE_LOGIN = False  # Set to False to disable login requirement
 
 
 def load_llm_config(config_path='config.yaml'):

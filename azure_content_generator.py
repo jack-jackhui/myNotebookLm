@@ -41,6 +41,10 @@ class AzureContentGenerator(ContentGenerator):
         """
         Generate a conversation script based on provided content.
         """
+
+        if not content:
+            raise ValueError("Content cannot be empty for script generation.")
+
         prompt = (
             f"Create a conversation between two hosts, Jack and Corr, about the following content:\n\n{content}\n\n"
             f"Each response should be conversational and reflect a back-and-forth dialogue style. Use explicit speaker tags like 'Jack:' and 'Corr:'."
@@ -52,10 +56,12 @@ class AzureContentGenerator(ContentGenerator):
                 messages=messages,
                 model=self.azure_model,
                 temperature=0.7,
-                max_tokens=2000
+                max_tokens=1500
             )
 
             script = response.choices[0].message.content
+            if not script:
+                raise ValueError("Empty script generated.")
             return script.strip()
 
         except Exception as e:

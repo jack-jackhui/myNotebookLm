@@ -4,7 +4,7 @@ class ContentGenerator:
     def __init__(self, config):
         self.config = config
 
-    def generate_conversation_script(self, content):
+    def generate_conversational_script(self, content):
         """
         Generate a conversational script based on the provided content.
         """

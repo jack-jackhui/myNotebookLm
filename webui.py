@@ -1,4 +1,5 @@
 import streamlit as st
+import time
 import os
 from content_generation import create_content_generator
 from content_extraction import extract_content_from_sources
@@ -19,6 +20,21 @@ from config import (
 SCRIPT_FILE_PATH = './data/transcripts/'
 AUDIO_FILE_PATH = './data/audio/podcast/'
 
+# Function to wait for the audio file to be fully written
+def wait_for_file(file_path, timeout=20, interval=1):
+    """
+    Wait for a file to be written and accessible.
+    :param file_path: Path of the file to wait for.
+    :param timeout: Maximum time to wait (in seconds).
+    :param interval: Interval between checks (in seconds).
+    :return: True if file becomes available, False otherwise.
+    """
+    start_time = time.time()
+    while time.time() - start_time < timeout:
+        if os.path.exists(file_path) and os.path.getsize(file_path) > 0:
+            return True
+        time.sleep(interval)
+    return False
 
 # Function to save uploaded files to disk
 def save_file(uploaded_file):
@@ -93,7 +109,11 @@ else:
                 try:
                     # Generate conversational script
                     st.write("Generating conversational script...")
-                    script = content_generator.generate_conversation_script(combined_text)
+                    try:
+                        script = content_generator.generate_conversational_script(combined_text)
+                    except NotImplementedError:
+                        st.error("Conversation script generation is not supported by the current LLM provider.")
+                        raise
 
                     # Save script to file
                     timestamp = datetime.now().strftime('%Y-%m-%d_%H-%M-%S')
@@ -113,12 +133,21 @@ else:
                         outro_music_path=OUTRO_MUSIC_PATH
                     ))
 
-                    # Play the audio file
-                    with open(audio_output_path, "rb") as audio_file:
-                        st.audio(audio_file.read(), format="audio/mp3")
-                    st.success("Audio overview created successfully!")
-                except NotImplementedError:
-                    st.error("Audio generation is not supported by the current LLM provider.")
+                    # Ensure the audio file is ready before reading it
+                    if wait_for_file(audio_output_path):
+                        try:
+                            # with open(audio_output_path, "rb") as audio_file:
+                            #    st.audio(audio_file.read(), format="audio/mpeg")
+                            st.audio(audio_output_path, format="audio/mpeg")
+                            st.success("Audio overview created successfully!")
+                        except Exception as e:
+                            st.error(f"Failed to read or play the audio file: {e}")
+                    else:
+                        st.error("Audio file generation took too long or failed. Please try again.")
+                except NotImplementedError as nie:
+                    st.error(str(nie))
+                except Exception as e:
+                    st.error(f"An unexpected error occurred: {str(e)}")
 
 # Footer
 with st.container():

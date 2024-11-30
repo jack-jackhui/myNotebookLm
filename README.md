@@ -1,4 +1,10 @@
 # MyNoteBookLm
+<hr />
+
+<div style="display: flex; justify-content: space-between;">
+  <a href="README-zh.md" style="text-decoration: none; padding: 5px 10px; border: 1px solid #ccc; border-radius: 5px;">简体中文</a>
+  <span style="padding: 5px 10px; border: 1px solid #ccc; border-radius: 5px; background-color: #ccc; color: white;">English</span>
+</div>
 
 MyNoteBookLm is an open-source, AI-powered notebook & podcast application inspired by Google’s NotebookLM. 
 This project aims to provide users with a fully customizable and privacy-focused tool for note-taking, knowledge management, and podcast generation. 

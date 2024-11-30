@@ -1,4 +1,9 @@
 # MyNoteBookLm
+<hr />
+<div style="display: flex; justify-content: space-between;">
+  <span style="padding: 5px 10px; border: 1px solid #ccc; border-radius: 5px; background-color: #ccc; color: white;">简体中文</span>
+  <a href="README.md" style="text-decoration: none; padding: 5px 10px; border: 1px solid #ccc; border-radius: 5px;">English</a>
+</div>
 
 MyNoteBookLm 是一款受 Google’s NotebookLM 启发的开源、由人工智能驱动的笔记本及播客应用程序。
 本项目旨在为用户提供一个完全可定制且注重隐私的工具，用于笔记记录、知识管理以及播客生成。

@@ -1,9 +1,9 @@
-# MyNoteBookLm
-<hr />
+<h1 align="center">
+MyNoteBookLm
+</h1>
 
-<div style="text-align: center;">
-    <a href="README-zh.md">简体中文</a> |
-    <a href="README.md">English</a>
+<div align="center">
+    <h3><a href="README-zh.md">简体中文</a> | <a href="README.md">English</a></h3>
 </div>
 
 MyNoteBookLm is an open-source, AI-powered notebook & podcast application inspired by Google’s NotebookLM. 
@@ -33,6 +33,10 @@ Check out the amazing podcast created with the MyNotebookLm app! We welcome you 
 **Podcast Link**: [Click here to listen](https://podcasts.apple.com/au/podcast/ai-unchained/id1778941149)
 
 In this podcast, you'll experience the powerful features and charm of MyNotebookLm. We'll have in-depth discussions on a variety of interesting topics, presenting a perfect blend of knowledge and sound. Whether you're on your commute, working out, or just relaxing, you can tune in and start an exciting audio journey. Come and join us! 
+
+## Online Usage 🚀
+The deployment and usage of the project may pose certain difficulties for novice users. Here, we offer a free online service. There is no need for deployment, and it can be used directly online, which is extremely convenient.
+- Project URL: https://mynotebooklm.jackhui.com.au
 
 ## Getting Started
 

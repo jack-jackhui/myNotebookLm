@@ -1,10 +1,10 @@
 # MyNoteBookLm
 <hr />
-<div style="display: flex; justify-content: space-between;">
-  <span style="padding: 5px 10px; border: 1px solid #ccc; border-radius: 5px; background-color: #ccc; color: white;">简体中文</span>
-  <a href="README.md" style="text-decoration: none; padding: 5px 10px; border: 1px solid #ccc; border-radius: 5px;">English</a>
+<div style="text-align: center;">
+    <a href="README-zh.md">简体中文</a> |
+    <a href="README.md">English</a>
 </div>
-
+<br>
 MyNoteBookLm 是一款受 Google’s NotebookLM 启发的开源、由人工智能驱动的笔记本及播客应用程序。
 本项目旨在为用户提供一个完全可定制且注重隐私的工具，用于笔记记录、知识管理以及播客生成。
 用户可以自行搭建环境，并集成各类大语言模型（LLM）和文本转语音（TTS）服务。
@@ -19,6 +19,18 @@ MyNoteBookLm 是一款受 Google’s NotebookLM 启发的开源、由人工智�
 - **灵活的 API 集成**：支持一系列大语言模型（LLM）和文本转语音（TTS）服务提供商，默认的大语言模型（LLM）提供方为微软 Azure OpenAI。
 - **用户界面**：基于 Streamlit 的网页用户界面，带来直观且易用的使用体验。
 - **多语言模型支持**：支持多个大语言模型，如微软 Azure、OpenAI 或者通过 Ollama 使用本地大语言模型。
+
+## 精彩播客展示
+
+使用 MyNotebookLm 应用创作的播客现已上线！欢迎大家收听并分享您的感受。
+
+**播客封面**：
+
+![播客封面](https://is1-ssl.mzstatic.com/image/thumb/Podcasts211/v4/d5/1d/aa/d51daa6d-b039-d949-8d8f-e6383d5a90f7/mza_15802649668481427365.png/300x300bb.webp)
+
+**播客链接**：[点击此处前往收听](https://podcasts.apple.com/au/podcast/ai-unchained/id1778941149)
+
+在这个播客中，您将领略到 MyNotebookLm 强大的功能与魅力，深入探讨各种有趣的话题，感受知识与声音的完美融合。无论是在通勤路上、运动健身时，还是在闲暇时光，都可以打开播客，开启一段精彩的听觉之旅。快来一起体验吧！ 
 
 ## 快速入门
 

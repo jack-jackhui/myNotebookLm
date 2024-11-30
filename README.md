@@ -1,9 +1,9 @@
 # MyNoteBookLm
 <hr />
 
-<div style="display: flex; justify-content: space-between;">
-  <a href="README-zh.md" style="text-decoration: none; padding: 5px 10px; border: 1px solid #ccc; border-radius: 5px;">简体中文</a>
-  <span style="padding: 5px 10px; border: 1px solid #ccc; border-radius: 5px; background-color: #ccc; color: white;">English</span>
+<div style="text-align: center;">
+    <a href="README-zh.md">简体中文</a> |
+    <a href="README.md">English</a>
 </div>
 
 MyNoteBookLm is an open-source, AI-powered notebook & podcast application inspired by Google’s NotebookLM. 
@@ -20,6 +20,19 @@ User can also use alternative LLMs such as OpenAI, or local LLMs via Ollama.
 - **Flexible API Integrations**: Supports a range of LLM and TTS providers, with Microsoft Azure OpenAI as the default LLM provider.
 - **User Interface**: A web-based UI powered by Streamlit for an intuitive and accessible experience.
 - **Multi-LLM Support**: Supports multiple LLMs such as MS Azure, OpenAI or local LLMs via Ollama.
+
+## Sample Podcast
+### Podcast: AI Unchained
+
+Check out the amazing podcast created with the MyNotebookLm app! We welcome you to listen and share your thoughts.
+
+**Podcast Cover**：
+
+![Podcast Cover](https://is1-ssl.mzstatic.com/image/thumb/Podcasts211/v4/d5/1d/aa/d51daa6d-b039-d949-8d8f-e6383d5a90f7/mza_15802649668481427365.png/300x300bb.webp)
+
+**Podcast Link**: [Click here to listen](https://podcasts.apple.com/au/podcast/ai-unchained/id1778941149)
+
+In this podcast, you'll experience the powerful features and charm of MyNotebookLm. We'll have in-depth discussions on a variety of interesting topics, presenting a perfect blend of knowledge and sound. Whether you're on your commute, working out, or just relaxing, you can tune in and start an exciting audio journey. Come and join us! 
 
 ## Getting Started
 
@@ -278,4 +291,4 @@ Thank you to the Podcastfy team for providing a foundation that helped shape thi
 
 ## License
 
-Check the LICENSE file for details.
+Check the [LICENSE](LICENSE) file for details.

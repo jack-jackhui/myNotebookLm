@@ -43,7 +43,8 @@ FRONTENDURL = os.getenv("FRONTENDURL")
 REQUIRE_LOGIN = True  # Set to False to disable login requirement
 
 
-def load_llm_config(config_path='config.yaml'):
+def load_llm_config():
+    config_path = os.path.join(os.path.dirname(__file__), 'config.yaml')
     with open(config_path, 'r') as f:
         config = yaml.safe_load(f)
 
@@ -74,13 +75,16 @@ OUTRO_MUSIC_PATH = config.get("OUTRO_MUSIC_PATH")
 FIRST_EPISODE_FLAG_FILE = config.get("FIRST_EPISODE_FLAG_FILE")
 
 # Extract the path to conversation_config.yaml
-conversation_config_path = config.get("conversation_config_path", "conversation_config.yaml")
+conversation_config_path = os.path.join(os.path.dirname(__file__), config.get("conversation_config_path", "conversation_config.yaml"))
 
 def load_rss_feeds():
     """Load RSS feeds from the YAML configuration."""
     return config.get("rss_feeds", [])
 
 def load_conversation_config():
+    if not os.path.exists(conversation_config_path):
+        raise FileNotFoundError(f"Conversation config file not found: {conversation_config_path}")
+
     with open(conversation_config_path, 'r') as f:
         config = yaml.safe_load(f)
 
@@ -92,6 +96,7 @@ def load_conversation_config():
     config['text_to_speech']['openai']['model'] = AZURE_OPENAI_TTS_MODEL_NAME
     config['text_to_speech']['openai']['deployment_name'] = AZURE_OPENAI_TTS_DEPLOYMENT_NAME
     config['text_to_speech']['azure']['api_key'] = AZURE_TTS_API_KEY
+    config['text_to_speech']['azure']['region'] = AZURE_TTS_REGION
     config['text_to_speech']['azure'][
         'api_base'] = f"https://{AZURE_TTS_REGION}.tts.speech.microsoft.com/cognitiveservices/v1"
 

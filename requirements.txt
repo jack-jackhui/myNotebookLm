@@ -181,3 +181,4 @@ websockets==13.1
 wheel==0.44.0
 yarl==1.16.0
 youtube-transcript-api==0.6.2
+azure-cognitiveservices-speech

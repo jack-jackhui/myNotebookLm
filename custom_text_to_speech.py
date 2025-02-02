@@ -10,7 +10,11 @@ from edge_tts import Communicate
 from typing import List, Tuple
 import asyncio
 import httpx
+from azure.cognitiveservices.speech import SpeechConfig, SpeechSynthesizer, AudioDataStream, SpeechSynthesisOutputFormat
+from azure.cognitiveservices.speech.audio import AudioOutputConfig
 from time import sleep
+
+from config import AZURE_TTS_REGION
 
 # Maximum number of retries
 MAX_RETRIES = 3
@@ -18,7 +22,7 @@ MAX_RETRIES = 3
 logger = logging.getLogger(__name__)
 
 logging.basicConfig(
-    level=logging.ERROR,  # Changed from INFO to DEBUG
+    level=logging.DEBUG,  # Changed from INFO to DEBUG
     format='%(asctime)s [%(levelname)s] %(name)s: %(message)s',
     datefmt='%Y-%m-%d %H:%M:%S'
 )
@@ -76,6 +80,7 @@ class TextToSpeechService:
     def _init_azure(self, config):
         self.azure_api_key = config['text_to_speech']['azure']['api_key']
         self.azure_api_base = config['text_to_speech']['azure']['api_base']
+        self.azure_region = config['text_to_speech']['azure']['region']
         self.voice_question = config['text_to_speech']['azure']['default_voices']['question']
         self.voice_answer = config['text_to_speech']['azure']['default_voices']['answer']
         logger.info("Initialized Azure TTS with the provided configuration.")
@@ -139,6 +144,8 @@ class TextToSpeechService:
         try:
             logger.info(f"Generating speech with Azure TTS for text segment: '{text[:50]}...'")
 
+            """"
+            # Old code using rest api call
             # Construct the request URL
             url = f"{self.config['text_to_speech']['azure']['api_base']}"
             logger.info(f"Azure TTS API url: {url}")
@@ -149,20 +156,28 @@ class TextToSpeechService:
                 "Content-Type": "application/ssml+xml",
                 "X-Microsoft-OutputFormat": "audio-24khz-96kbitrate-mono-mp3"
             }
+            """
 
             # Construct SSML request body with customizations
-            ssml = f"""
-            <speak version='1.0' xmlns='http://www.w3.org/2001/10/synthesis'
-                   xmlns:mstts='http://www.w3.org/2001/mstts' xml:lang='en-US'>
-                <voice name='{voice_name}' parameters='temperature=0.8'>
-                    {text}
-                </voice>
-            </speak>"""
+            # ssml = f"""
+            # <speak version='1.0' xmlns='http://www.w3.org/2001/10/synthesis'
+            #       xmlns:mstts='http://www.w3.org/2001/mstts' xml:lang='en-US'>
+            #    <voice name='{voice_name}' parameters='temperature=0.8'>
+            #        {text}
+            #    </voice>
+            # </speak>"""
 
+            # Log the SSML for debugging
+            # logger.debug(f"SSML Request Body: {ssml}")
+
+            """
             # Make the request
             async with httpx.AsyncClient() as client:
                 response = await client.post(url, headers=headers, data=ssml)
-
+                # Log the full response for debugging
+                logger.debug(f"Response Status Code: {response.status_code}")
+                logger.debug(f"Response Headers: {response.headers}")
+                logger.debug(f"Response Content: {response.text}")
                 # Check if the request was successful
                 if response.status_code == 200:
                     with open(output_file, 'wb') as f:
@@ -170,6 +185,27 @@ class TextToSpeechService:
                     logger.info(f"Azure TTS segment saved to {output_file}")
                 else:
                     logger.error(f"Azure TTS request failed with status {response.status_code}: {response.text}")
+            """
+
+            # Configure the speech synthesizer
+            speech_config = SpeechConfig(subscription=self.azure_api_key, region=self.azure_region)
+            audio_config = AudioOutputConfig(filename=output_file)
+
+            # Set the desired voice and output format
+            speech_config.speech_synthesis_voice_name = voice_name
+            speech_config.set_speech_synthesis_output_format(SpeechSynthesisOutputFormat.Audio24Khz96KBitRateMonoMp3)
+
+            # Create a synthesizer
+            synthesizer = SpeechSynthesizer(speech_config=speech_config, audio_config=audio_config)
+
+            # Synthesize the text to speech
+            result = synthesizer.speak_text_async(text).get()
+
+            # Check the result
+            if result.reason == result.Reason.SynthesizingAudioCompleted:
+                logger.info(f"Azure TTS segment saved to {output_file}")
+            else:
+                logger.error(f"Azure TTS synthesis failed: {result.reason}")
 
         except Exception as e:
             logger.error(f"Error generating speech with Azure TTS: {e}")

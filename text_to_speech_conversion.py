@@ -160,7 +160,6 @@ async def convert_script_to_audio(script_text, output_audio_file, intro_music_pa
     combined_audio.export(output_audio_file, format="mp3")
     logger.info(f"Final podcast audio saved to: {output_audio_file}")
 
-
     # Clean up temporary script audio file
     if os.path.exists(temp_audio_file):
         os.remove(temp_audio_file)

@@ -66,8 +66,8 @@ else:
     content_generator = create_content_generator()  # Dynamically load the correct LLM provider
 
     # File Upload Section
-    uploaded_files = st.file_uploader("Upload your source files (PDF, Word, Text)", accept_multiple_files=True,
-                                      type=["pdf", "docx", "txt"])
+    uploaded_files = st.file_uploader("Upload your source files (PDF, Word, Text, PPT)", accept_multiple_files=True,
+                                      type=["pdf", "docx", "txt", "pptx"])
 
     if uploaded_files:
         saved_files = [save_file(file) for file in uploaded_files]

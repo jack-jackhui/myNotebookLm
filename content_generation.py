@@ -4,6 +4,7 @@
 from openai_content_generator import OpenAIContentGenerator
 from ollama_content_generator import OllamaContentGenerator
 from azure_content_generator import AzureContentGenerator
+from deepseek_content_generator import DeepSeekContentGenerator
 from config import load_conversation_config, load_llm_config
 
 def create_content_generator():
@@ -29,6 +30,15 @@ def create_content_generator():
         if not ollama_config:
             raise ValueError("Ollama configuration is missing or incomplete.")
         return OllamaContentGenerator(conversation_config=conversation_config, api_config=ollama_config)
+    elif provider == 'deepseek':  # Add DeepSeek case
+        deepseek_config = config['llm_provider'].get('deepseek', {})
+        if not all(
+                [deepseek_config.get('endpoint'), deepseek_config.get('model_name'), deepseek_config.get('api_key')]):
+            raise ValueError("DeepSeek configuration is missing or incomplete.")
+        return DeepSeekContentGenerator(
+            conversation_config=conversation_config,
+            api_config=deepseek_config
+        )
     else:
         raise ValueError(f"Unsupported LLM provider: {provider}")
 

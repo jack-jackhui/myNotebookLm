@@ -184,3 +184,4 @@ youtube-transcript-api==0.6.2
 azure-cognitiveservices-speech
 azure-core~=1.32.0
 python-pptx
+azure-ai-inference

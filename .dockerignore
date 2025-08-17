@@ -37,6 +37,7 @@ docker-compose*.yml
 
 # Build script
 build_and_push.sh
+run_podcast.sh
 
 # Generated Files
 ./data/audio/

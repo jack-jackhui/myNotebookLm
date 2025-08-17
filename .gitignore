@@ -17,3 +17,4 @@ temp_audio/*
 ./uploaded_files/
 ./temp_files/
 ./build_and_push.sh
+./run_podcast.sh

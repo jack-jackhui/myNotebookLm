@@ -13,11 +13,21 @@ import httpx
 from azure.cognitiveservices.speech import SpeechConfig, SpeechSynthesizer, AudioDataStream, SpeechSynthesisOutputFormat
 from azure.cognitiveservices.speech.audio import AudioOutputConfig
 from time import sleep
+from tenacity import retry, stop_after_attempt, wait_exponential, retry_if_exception_type
 
 from settings import AZURE_TTS_REGION
 
 # Maximum number of retries
 MAX_RETRIES = 3
+
+# Retry decorator for TTS API calls
+def tts_retry():
+    return retry(
+        stop=stop_after_attempt(3),
+        wait=wait_exponential(multiplier=1, min=2, max=10),
+        retry=retry_if_exception_type((httpx.HTTPError, httpx.TimeoutException, ConnectionError)),
+        before_sleep=lambda retry_state: logger.warning(f"TTS retry attempt {retry_state.attempt_number} after error")
+    )
 
 logger = logging.getLogger(__name__)
 
@@ -113,45 +123,97 @@ class TextToSpeechService:
         self.voice_answer = config['text_to_speech']['azure']['default_voices']['answer']
         logger.info("Initialized Azure TTS with the provided configuration.")
 
-    async def convert_to_speech(self, text, output_file):
-        """Converts text with speaker tags to speech."""
+    async def convert_to_speech(self, text, output_file, parallel=True, max_concurrent=3):
+        """Converts text with speaker tags to speech.
+        
+        Args:
+            text: Script text with speaker tags
+            output_file: Output audio file path
+            parallel: If True, generate segments in parallel (default: True)
+            max_concurrent: Maximum concurrent TTS requests (default: 3)
+        """
         segments = self.split_script_by_speaker(text)
-        audio_files = []
-
-        # Check segment details
+        
         if not segments:
             logger.error("No segments found. Ensure script format matches expected input.")
             return
-
-        # Generate audio for each segment
+        
+        logger.info(f"Processing {len(segments)} segments with {'parallel' if parallel else 'sequential'} generation")
+        
+        # Prepare segment tasks
+        segment_tasks = []
         for i, (speaker, segment_text) in enumerate(segments):
-            # Determine file extension based on provider
-            ext = "wav" if self.provider == "sparktts" else "mp3"
-            # Log the current segment details
-            logger.info(f"Generating speech with {self.provider} for speaker {speaker} with text: {segment_text[:50]}...")
-
-            # Skip empty or whitespace-only segments
             if not segment_text.strip():
-                logger.warning(f"Empty text segment for {speaker}; skipping TTS generation.")
+                logger.warning(f"Empty text segment {i} for {speaker}; skipping.")
                 continue
-
-            temp_file = os.path.join(self.temp_audio_dir, f"segment_{i}.{ext}")
+            segment_tasks.append((i, speaker, segment_text))
+        
+        # Generate audio files
+        if parallel and len(segment_tasks) > 1:
+            audio_files = await self._generate_segments_parallel(segment_tasks, max_concurrent)
+        else:
+            audio_files = await self._generate_segments_sequential(segment_tasks)
+        
+        # Merge segments into final output
+        if audio_files:
+            # Sort by segment index to maintain order
+            audio_files.sort(key=lambda x: x[0])
+            ordered_files = [f[1] for f in audio_files]
+            self._merge_audio_files(ordered_files, output_file)
+            logger.info(f"Successfully generated audio with {len(ordered_files)} segments")
+        else:
+            logger.error("No valid audio segments to merge.")
+    
+    async def _generate_segments_parallel(self, segment_tasks, max_concurrent=3):
+        """Generate TTS segments in parallel with concurrency limit."""
+        semaphore = asyncio.Semaphore(max_concurrent)
+        results = []
+        
+        async def process_with_semaphore(task):
+            async with semaphore:
+                return await self._generate_single_segment(*task)
+        
+        tasks = [process_with_semaphore(task) for task in segment_tasks]
+        completed = await asyncio.gather(*tasks, return_exceptions=True)
+        
+        for i, result in enumerate(completed):
+            if isinstance(result, Exception):
+                logger.error(f"Segment {segment_tasks[i][0]} failed: {result}")
+            elif result:
+                results.append(result)
+        
+        return results
+    
+    async def _generate_segments_sequential(self, segment_tasks):
+        """Generate TTS segments sequentially (original behavior)."""
+        results = []
+        for task in segment_tasks:
+            try:
+                result = await self._generate_single_segment(*task)
+                if result:
+                    results.append(result)
+            except Exception as e:
+                logger.error(f"Segment {task[0]} failed: {e}")
+        return results
+    
+    async def _generate_single_segment(self, index, speaker, segment_text):
+        """Generate a single TTS segment. Returns (index, filepath) or None."""
+        ext = "wav" if self.provider == "sparktts" else "mp3"
+        temp_file = os.path.join(self.temp_audio_dir, f"segment_{index}.{ext}")
+        
+        logger.info(f"[{index}] Generating speech for {speaker}: {segment_text[:40]}...")
+        
+        try:
             if self.provider == 'elevenlabs':
                 voice_name = self.voice_question if speaker == 'Person1' else self.voice_answer
                 voice_id = self.voice_name_to_id.get(voice_name)
                 if not voice_id:
-                    logger.error(f"Voice '{voice_name}' not found in ElevenLabs. Skipping segment.")
-                    continue
+                    logger.error(f"Voice '{voice_name}' not found in ElevenLabs.")
+                    return None
                 await self._convert_with_elevenlabs(segment_text, temp_file, voice_id)
             elif self.provider == 'sparktts':
-                prompt_path = self.default_prompts['question'] if speaker == 'Person1' \
-                    else self.default_prompts['answer']
-                await self._convert_with_sparktts(
-                    segment_text,
-                    temp_file,
-                    prompt_path,
-                    speaker
-                )
+                prompt_path = self.default_prompts['question'] if speaker == 'Person1' else self.default_prompts['answer']
+                await self._convert_with_sparktts(segment_text, temp_file, prompt_path, speaker)
             elif self.provider == 'openai':
                 voice_name = self.voice_question if speaker == 'Person1' else self.voice_answer
                 await self._convert_with_openai(segment_text, temp_file, voice_name)
@@ -159,25 +221,24 @@ class TextToSpeechService:
                 voice_name = self.edge_voice_question if speaker == 'Person1' else self.edge_voice_answer
                 await self._convert_with_edge(segment_text, temp_file, voice_name)
             elif self.provider == 'azure':
-                voice_name = self.config['text_to_speech']['azure']['default_voices'][
-                    'question'] if speaker == 'Person1' else self.config['text_to_speech']['azure']['default_voices'][
-                    'answer']
+                voice_name = self.config['text_to_speech']['azure']['default_voices']['question'] if speaker == 'Person1' else self.config['text_to_speech']['azure']['default_voices']['answer']
                 await self._convert_with_azure(segment_text, temp_file, voice_name)
             else:
                 logger.error(f"TTS provider '{self.provider}' is not supported.")
-                continue
-
+                return None
+            
             if os.path.exists(temp_file) and os.path.getsize(temp_file) > 0:
-                audio_files.append(temp_file)
+                logger.info(f"[{index}] Successfully generated segment")
+                return (index, temp_file)
             else:
-                logger.error(f"Audio segment {temp_file} is empty or was not created.")
+                logger.error(f"[{index}] Audio segment is empty or was not created")
+                return None
+                
+        except Exception as e:
+            logger.error(f"[{index}] Failed to generate segment: {e}")
+            raise
 
-        # Merge segments into final output if we have valid audio files
-        if audio_files:
-            self._merge_audio_files(audio_files, output_file)
-        else:
-            logger.error("No valid audio segments to merge.")
-
+    @tts_retry()
     async def _convert_with_sparktts(self, text, output_file, prompt_speech_path, speaker,
                                      temperature=0.8):
         """Generate speech using SparkTTS API"""
@@ -265,6 +326,7 @@ class TextToSpeechService:
         except Exception as e:
             logger.error(f"SparkTTS conversion failed: {str(e)}")
 
+    @tts_retry()
     async def _convert_with_azure(self, text, output_file, voice_name):
         """Generate speech using Azure TTS and save to file."""
         try:
@@ -336,6 +398,7 @@ class TextToSpeechService:
         except Exception as e:
             logger.error(f"Error generating speech with Azure TTS: {e}")
 
+    @tts_retry()
     async def _convert_with_elevenlabs(self, text, output_file, voice_id):
         """Generate speech using ElevenLabs API and save to file."""
         try:
@@ -369,6 +432,7 @@ class TextToSpeechService:
         except Exception as e:
             logger.error(f"Error generating speech with ElevenLabs: {e}")
 
+    @tts_retry()
     async def _convert_with_openai(self, text, output_file, voice_name):
         """Generate speech using Azure OpenAI TTS API and save to file."""
         try:
@@ -418,6 +482,7 @@ class TextToSpeechService:
         except Exception as e:
             logger.error(f"Unexpected error in generating speech with Azure OpenAI: {e}")
 
+    @tts_retry()
     async def _convert_with_edge(self, text, output_file, voice_name):
         """Generate speech using Edge TTS and save to file."""
         try:

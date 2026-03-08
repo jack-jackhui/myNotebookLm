@@ -7,6 +7,8 @@ from text_to_speech_conversion import convert_script_to_audio
 from validation import validate_credentials
 from datetime import datetime
 import asyncio
+from progress import ProgressTracker, ProgressStage
+from errors import MyNotebookLMError
 from settings import (
     FRONTENDURL,
     REQUIRE_LOGIN,
@@ -106,16 +108,30 @@ else:
             st.write("### Audio Overview Generation")
 
             if st.button("Generate Audio Overview"):
+                # Progress tracking UI
+                progress_bar = st.progress(0)
+                status_text = st.empty()
+                
+                def update_progress(status):
+                    status_text.text(f"{status.message}")
+                    progress_bar.progress(int(min(status.percent, 100)))
+                
+                tracker = ProgressTracker(on_progress=update_progress)
+                
                 try:
+                    tracker.start()
+                    
                     # Generate conversational script
-                    st.write("Generating conversational script...")
+                    tracker.update(ProgressStage.GENERATING_SCRIPT, "Generating conversational script...")
                     try:
                         script = content_generator.generate_conversational_script(combined_text)
                     except NotImplementedError:
+                        tracker.fail("Script generation not supported by current LLM provider")
                         st.error("Conversation script generation is not supported by the current LLM provider.")
                         raise
 
                     # Save script to file
+                    tracker.update(ProgressStage.GENERATING_SCRIPT, "Saving script...")
                     timestamp = datetime.now().strftime('%Y-%m-%d_%H-%M-%S')
                     script_filename = os.path.join(SCRIPT_FILE_PATH, f"{timestamp}_conversation_script.txt")
                     os.makedirs(SCRIPT_FILE_PATH, exist_ok=True)
@@ -123,7 +139,7 @@ else:
                         f.write(script)
 
                     # Convert script to audio
-                    st.write("Converting script to audio...")
+                    tracker.update(ProgressStage.GENERATING_AUDIO, "Converting script to audio (this may take a few minutes)...")
                     os.makedirs(AUDIO_FILE_PATH, exist_ok=True)
                     audio_output_path = os.path.join(AUDIO_FILE_PATH, f"{timestamp}_audio_overview.mp3")
                     asyncio.run(convert_script_to_audio(
@@ -133,21 +149,33 @@ else:
                         outro_music_path=OUTRO_MUSIC_PATH
                     ))
 
-                    # Ensure the audio file is ready before reading it
+                    # Finalize
+                    tracker.update(ProgressStage.FINALIZING, "Preparing audio file...")
                     if wait_for_file(audio_output_path):
-                        try:
-                            # with open(audio_output_path, "rb") as audio_file:
-                            #    st.audio(audio_file.read(), format="audio/mpeg")
-                            st.audio(audio_output_path, format="audio/mpeg")
-                            st.success("Audio overview created successfully!")
-                        except Exception as e:
-                            st.error(f"Failed to read or play the audio file: {e}")
+                        tracker.complete("Audio overview created successfully!")
+                        st.audio(audio_output_path, format="audio/mpeg")
+                        st.success("✅ Audio overview created successfully!")
+                        
+                        # Offer transcript download
+                        with open(script_filename, 'r') as f:
+                            st.download_button(
+                                label="📄 Download Transcript",
+                                data=f.read(),
+                                file_name=f"{timestamp}_transcript.txt",
+                                mime="text/plain"
+                            )
                     else:
+                        tracker.fail("Audio file generation timed out")
                         st.error("Audio file generation took too long or failed. Please try again.")
+                        
+                except MyNotebookLMError as e:
+                    tracker.fail(e.user_message())
+                    st.error(f"❌ {e.user_message()}")
                 except NotImplementedError as nie:
                     st.error(str(nie))
                 except Exception as e:
-                    st.error(f"An unexpected error occurred: {str(e)}")
+                    tracker.fail(str(e))
+                    st.error(f"❌ An unexpected error occurred: {str(e)}")
 
 # Footer
 with st.container():

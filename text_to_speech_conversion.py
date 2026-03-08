@@ -1,7 +1,7 @@
 import os
 import logging
 from custom_text_to_speech import TextToSpeechService
-from config import load_conversation_config
+from settings import load_conversation_config
 from pydub import AudioSegment
 import re
 import asyncio

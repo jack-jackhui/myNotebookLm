@@ -7,7 +7,7 @@ from text_to_speech_conversion import convert_script_to_audio
 from validation import validate_credentials
 from datetime import datetime
 import asyncio
-from config import (
+from settings import (
     FRONTENDURL,
     REQUIRE_LOGIN,
     conversation_config_path,

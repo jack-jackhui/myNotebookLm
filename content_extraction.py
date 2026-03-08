@@ -1,6 +1,6 @@
 from typing import List
 from podcastfy.content_parser.content_extractor import ContentExtractor
-#from config import JINA_API_KEY
+#from settings import JINA_API_KEY
 import os
 from pptx import Presentation
 

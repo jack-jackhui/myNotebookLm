@@ -14,7 +14,7 @@ from azure.cognitiveservices.speech import SpeechConfig, SpeechSynthesizer, Audi
 from azure.cognitiveservices.speech.audio import AudioOutputConfig
 from time import sleep
 
-from config import AZURE_TTS_REGION
+from settings import AZURE_TTS_REGION
 
 # Maximum number of retries
 MAX_RETRIES = 3

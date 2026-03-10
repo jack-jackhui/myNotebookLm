@@ -13,19 +13,31 @@ class TestEnvSettings:
         settings = EnvSettings()
         assert settings is not None
     
-    def test_env_settings_reads_env_vars(self):
+    def test_env_settings_reads_env_vars(self, monkeypatch):
         """EnvSettings should read environment variables."""
+        # Force specific test values by setting them BEFORE import
+        # Use monkeypatch.setenv which overrides any existing values
+        monkeypatch.setenv('AZURE_OPENAI_API_KEY', 'test-key')
+        monkeypatch.setenv('ELEVENLABS_API_KEY', 'test-elevenlabs-key')
+        
+        # Must create fresh instance to pick up new env vars
         from settings import EnvSettings
         settings = EnvSettings()
-        # These are set in conftest.py
+        
         assert settings.azure_openai_api_key == 'test-key'
         assert settings.elevenlabs_api_key == 'test-elevenlabs-key'
     
-    def test_env_settings_optional_vars_default_none(self):
-        """Optional env vars should default to None."""
+    def test_env_settings_optional_vars_default_none(self, monkeypatch):
+        """Optional env vars should default to None when not set."""
+        # Explicitly remove any existing WordPress settings
+        monkeypatch.delenv('WORDPRESS_SITE', raising=False)
+        monkeypatch.delenv('WORDPRESS_USERNAME', raising=False)
+        monkeypatch.delenv('WORDPRESS_APP_PASSWORD', raising=False)
+        
+        # Must create fresh instance after env changes
         from settings import EnvSettings
         settings = EnvSettings()
-        # WordPress settings are not set
+        
         assert settings.wordpress_site is None
 
 

@@ -76,3 +76,31 @@ jobs:
             docker compose pull mynotebooklm
             docker compose up -d mynotebooklm
             echo "Deployed mynotebooklm at $(date)"
+      
+      - name: Notify Telegram (Success)
+        if: success()
+        run: |
+          curl -s -X POST "https://api.telegram.org/bot${{ secrets.TELEGRAM_BOT_TOKEN }}/sendMessage" \
+            -d chat_id="${{ secrets.TELEGRAM_CHAT_ID }}" \
+            -d parse_mode="Markdown" \
+            -d text="✅ *myNotebookLm deployed*%0A%0ACommit: \`${GITHUB_SHA::7}\`%0ABy: ${{ github.actor }}%0A[View Run](${{ github.server_url }}/${{ github.repository }}/actions/runs/${{ github.run_id }})"
+      
+      - name: Notify Telegram (Failure)
+        if: failure()
+        run: |
+          curl -s -X POST "https://api.telegram.org/bot${{ secrets.TELEGRAM_BOT_TOKEN }}/sendMessage" \
+            -d chat_id="${{ secrets.TELEGRAM_CHAT_ID }}" \
+            -d parse_mode="Markdown" \
+            -d text="❌ *myNotebookLm deploy failed*%0A%0ACommit: \`${GITHUB_SHA::7}\`%0ABy: ${{ github.actor }}%0A[View Run](${{ github.server_url }}/${{ github.repository }}/actions/runs/${{ github.run_id }})"
+
+  notify-build-failure:
+    needs: [test, build-push]
+    runs-on: ubuntu-latest
+    if: failure() && github.event_name == 'push' && github.ref == 'refs/heads/main'
+    steps:
+      - name: Notify Telegram (Build Failed)
+        run: |
+          curl -s -X POST "https://api.telegram.org/bot${{ secrets.TELEGRAM_BOT_TOKEN }}/sendMessage" \
+            -d chat_id="${{ secrets.TELEGRAM_CHAT_ID }}" \
+            -d parse_mode="Markdown" \
+            -d text="❌ *myNotebookLm build failed*%0A%0ACommit: \`${GITHUB_SHA::7}\`%0ABy: ${{ github.actor }}%0A[View Run](${{ github.server_url }}/${{ github.repository }}/actions/runs/${{ github.run_id }})"

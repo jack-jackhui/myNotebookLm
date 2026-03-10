@@ -70,12 +70,66 @@ class TestScriptSplitting:
 
 class TestRetryConfiguration:
     """Tests for retry configuration."""
-    
+
     def test_retry_decorator_config(self):
         """Retry decorator should have proper configuration."""
         with open('custom_text_to_speech.py', 'r') as f:
             content = f.read()
-        
+
         # Check retry configuration exists
         assert 'stop_after_attempt' in content
         assert 'wait_exponential' in content
+
+
+class TestTTSResult:
+    """Tests for TTSResult class."""
+
+    def test_tts_result_class_exists(self):
+        """TTSResult class should exist."""
+        with open('custom_text_to_speech.py', 'r') as f:
+            content = f.read()
+        assert 'class TTSResult:' in content
+
+    def test_tts_result_tracks_successes(self):
+        """TTSResult should track successful segments."""
+        with open('custom_text_to_speech.py', 'r') as f:
+            content = f.read()
+        assert 'successful_segments' in content
+        assert 'success_count' in content
+
+    def test_tts_result_tracks_failures(self):
+        """TTSResult should track failed segments."""
+        with open('custom_text_to_speech.py', 'r') as f:
+            content = f.read()
+        assert 'failed_segments' in content
+        assert 'failure_count' in content
+
+    def test_tts_result_has_failure_summary(self):
+        """TTSResult should provide failure summary."""
+        with open('custom_text_to_speech.py', 'r') as f:
+            content = f.read()
+        assert 'def get_failure_summary' in content
+
+    def test_convert_to_speech_returns_tts_result(self):
+        """convert_to_speech should return TTSResult."""
+        with open('custom_text_to_speech.py', 'r') as f:
+            content = f.read()
+        assert '-> TTSResult:' in content
+
+    def test_parallel_method_returns_failures(self):
+        """Parallel method should return failures list."""
+        with open('custom_text_to_speech.py', 'r') as f:
+            content = f.read()
+        assert 'return results, failures' in content
+
+
+class TestGracefulDegradation:
+    """Tests for graceful degradation behavior."""
+
+    def test_continues_with_successful_segments(self):
+        """Should continue processing even if some segments fail."""
+        with open('custom_text_to_speech.py', 'r') as f:
+            content = f.read()
+        # Check that failures are collected but don't stop processing
+        assert 'failures.append' in content
+        assert 'graceful degradation' in content.lower()

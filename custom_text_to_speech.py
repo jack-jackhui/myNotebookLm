@@ -31,6 +31,36 @@ def tts_retry():
 
 logger = logging.getLogger(__name__)
 
+
+class TTSResult:
+    """Result of TTS generation containing success/failure details."""
+
+    def __init__(self):
+        self.successful_segments: List[int] = []
+        self.failed_segments: List[Tuple[int, str, str]] = []  # (index, speaker, error_message)
+        self.total_segments: int = 0
+
+    @property
+    def success_count(self) -> int:
+        return len(self.successful_segments)
+
+    @property
+    def failure_count(self) -> int:
+        return len(self.failed_segments)
+
+    @property
+    def all_succeeded(self) -> bool:
+        return self.failure_count == 0
+
+    def get_failure_summary(self) -> str:
+        """Get human-readable summary of failures."""
+        if not self.failed_segments:
+            return ""
+        lines = [f"Failed {self.failure_count} of {self.total_segments} segments:"]
+        for idx, speaker, error in self.failed_segments:
+            lines.append(f"  - Segment {idx + 1} ({speaker}): {error}")
+        return "\n".join(lines)
+
 logging.basicConfig(
     level=logging.DEBUG,  # Changed from INFO to DEBUG
     format='%(asctime)s [%(levelname)s] %(name)s: %(message)s',
@@ -123,23 +153,27 @@ class TextToSpeechService:
         self.voice_answer = config['text_to_speech']['azure']['default_voices']['answer']
         logger.info("Initialized Azure TTS with the provided configuration.")
 
-    async def convert_to_speech(self, text, output_file, parallel=True, max_concurrent=3):
+    async def convert_to_speech(self, text, output_file, parallel=True, max_concurrent=3) -> TTSResult:
         """Converts text with speaker tags to speech.
-        
+
         Args:
             text: Script text with speaker tags
             output_file: Output audio file path
             parallel: If True, generate segments in parallel (default: True)
             max_concurrent: Maximum concurrent TTS requests (default: 3)
+
+        Returns:
+            TTSResult: Contains success/failure information for all segments
         """
+        result = TTSResult()
         segments = self.split_script_by_speaker(text)
-        
+
         if not segments:
             logger.error("No segments found. Ensure script format matches expected input.")
-            return
-        
+            return result
+
         logger.info(f"Processing {len(segments)} segments with {'parallel' if parallel else 'sequential'} generation")
-        
+
         # Prepare segment tasks
         segment_tasks = []
         for i, (speaker, segment_text) in enumerate(segments):
@@ -147,54 +181,86 @@ class TextToSpeechService:
                 logger.warning(f"Empty text segment {i} for {speaker}; skipping.")
                 continue
             segment_tasks.append((i, speaker, segment_text))
-        
+
+        result.total_segments = len(segment_tasks)
+
         # Generate audio files
         if parallel and len(segment_tasks) > 1:
-            audio_files = await self._generate_segments_parallel(segment_tasks, max_concurrent)
+            audio_files, failures = await self._generate_segments_parallel(segment_tasks, max_concurrent)
         else:
-            audio_files = await self._generate_segments_sequential(segment_tasks)
-        
-        # Merge segments into final output
+            audio_files, failures = await self._generate_segments_sequential(segment_tasks)
+
+        # Record successes and failures
+        result.successful_segments = [idx for idx, _ in audio_files]
+        result.failed_segments = failures
+
+        # Log failure summary if any
+        if result.failed_segments:
+            logger.warning(result.get_failure_summary())
+
+        # Merge segments into final output (graceful degradation - continue with successful segments)
         if audio_files:
             # Sort by segment index to maintain order
             audio_files.sort(key=lambda x: x[0])
             ordered_files = [f[1] for f in audio_files]
             self._merge_audio_files(ordered_files, output_file)
-            logger.info(f"Successfully generated audio with {len(ordered_files)} segments")
+            logger.info(f"Successfully generated audio with {len(ordered_files)} of {result.total_segments} segments")
         else:
             logger.error("No valid audio segments to merge.")
+
+        return result
     
     async def _generate_segments_parallel(self, segment_tasks, max_concurrent=3):
-        """Generate TTS segments in parallel with concurrency limit."""
+        """Generate TTS segments in parallel with concurrency limit.
+
+        Returns:
+            Tuple[List[Tuple[int, str]], List[Tuple[int, str, str]]]: (successful_files, failures)
+        """
         semaphore = asyncio.Semaphore(max_concurrent)
         results = []
-        
+        failures = []
+
         async def process_with_semaphore(task):
             async with semaphore:
                 return await self._generate_single_segment(*task)
-        
+
         tasks = [process_with_semaphore(task) for task in segment_tasks]
         completed = await asyncio.gather(*tasks, return_exceptions=True)
-        
+
         for i, result in enumerate(completed):
+            idx, speaker, _ = segment_tasks[i]
             if isinstance(result, Exception):
-                logger.error(f"Segment {segment_tasks[i][0]} failed: {result}")
+                error_msg = str(result)
+                logger.error(f"Segment {idx} ({speaker}) failed after retries: {error_msg}")
+                failures.append((idx, speaker, error_msg))
             elif result:
                 results.append(result)
-        
-        return results
+            else:
+                failures.append((idx, speaker, "Unknown error - no audio generated"))
+
+        return results, failures
     
     async def _generate_segments_sequential(self, segment_tasks):
-        """Generate TTS segments sequentially (original behavior)."""
+        """Generate TTS segments sequentially (original behavior).
+
+        Returns:
+            Tuple[List[Tuple[int, str]], List[Tuple[int, str, str]]]: (successful_files, failures)
+        """
         results = []
+        failures = []
         for task in segment_tasks:
+            idx, speaker, _ = task
             try:
                 result = await self._generate_single_segment(*task)
                 if result:
                     results.append(result)
+                else:
+                    failures.append((idx, speaker, "Unknown error - no audio generated"))
             except Exception as e:
-                logger.error(f"Segment {task[0]} failed: {e}")
-        return results
+                error_msg = str(e)
+                logger.error(f"Segment {idx} ({speaker}) failed after retries: {error_msg}")
+                failures.append((idx, speaker, error_msg))
+        return results, failures
     
     async def _generate_single_segment(self, index, speaker, segment_text):
         """Generate a single TTS segment. Returns (index, filepath) or None."""

@@ -19,6 +19,7 @@ from settings import (
     HOST_1_NAME,
     HOST_2_NAME,
 )
+from history import history_manager, create_session_entry
 
 # Define paths
 SCRIPT_FILE_PATH = './data/transcripts/'
@@ -56,9 +57,37 @@ st.set_page_config(
     page_icon="📊",
 )
 
+# Episode length configuration
+EPISODE_LENGTH_OPTIONS = {
+    "Auto": {"minutes": None, "word_count": None, "description": "Length determined by content"},
+    "5 min": {"minutes": 5, "word_count": 750, "description": "~750 words, quick overview"},
+    "15 min": {"minutes": 15, "word_count": 2250, "description": "~2,250 words, moderate depth"},
+    "30 min": {"minutes": 30, "word_count": 4500, "description": "~4,500 words, detailed discussion"},
+}
+
+
+def estimate_audio_duration(text: str, words_per_minute: int = 150) -> float:
+    """Estimate audio duration in minutes based on word count."""
+    word_count = len(text.split())
+    return word_count / words_per_minute
+
+
 # Sidebar Configuration
 with st.sidebar:
     st.header("Settings")
+
+    st.subheader("Episode Length")
+    episode_length = st.selectbox(
+        "Target Duration",
+        options=list(EPISODE_LENGTH_OPTIONS.keys()),
+        index=0,
+        help="Select target episode length. Auto lets the content determine length."
+    )
+    length_config = EPISODE_LENGTH_OPTIONS[episode_length]
+    st.caption(length_config["description"])
+    st.session_state['episode_length'] = episode_length
+    st.session_state['target_word_count'] = length_config["word_count"]
+
     st.subheader("Podcast Host Names")
     host_1_name = st.text_input(
         "Host 1 Name",
@@ -73,6 +102,64 @@ with st.sidebar:
     # Store in session state for use throughout the app
     st.session_state['host_1_name'] = host_1_name
     st.session_state['host_2_name'] = host_2_name
+
+    st.subheader("Custom Intro/Outro Audio")
+    custom_intro = st.file_uploader(
+        "Upload Intro Audio (optional)",
+        type=["mp3", "wav"],
+        key="custom_intro_upload",
+        help="Optional intro music to prepend to the podcast"
+    )
+    custom_outro = st.file_uploader(
+        "Upload Outro Audio (optional)",
+        type=["mp3", "wav"],
+        key="custom_outro_upload",
+        help="Optional outro music to append to the podcast"
+    )
+
+    # Save uploaded files and store paths in session state
+    if custom_intro:
+        intro_save_path = os.path.join("./uploaded_files/", f"custom_intro_{custom_intro.name}")
+        os.makedirs("./uploaded_files/", exist_ok=True)
+        with open(intro_save_path, "wb") as f:
+            f.write(custom_intro.getbuffer())
+        st.session_state['custom_intro_path'] = intro_save_path
+        st.success(f"Intro uploaded: {custom_intro.name}")
+    else:
+        st.session_state['custom_intro_path'] = None
+
+    if custom_outro:
+        outro_save_path = os.path.join("./uploaded_files/", f"custom_outro_{custom_outro.name}")
+        os.makedirs("./uploaded_files/", exist_ok=True)
+        with open(outro_save_path, "wb") as f:
+            f.write(custom_outro.getbuffer())
+        st.session_state['custom_outro_path'] = outro_save_path
+        st.success(f"Outro uploaded: {custom_outro.name}")
+    else:
+        st.session_state['custom_outro_path'] = None
+
+    # Session History
+    st.subheader("Session History")
+    sessions = history_manager.get_sessions(limit=10)
+    if sessions:
+        session_options = ["-- Select a session --"] + [s.display_name for s in sessions]
+        selected_idx = st.selectbox(
+            "Previous Sessions",
+            range(len(session_options)),
+            format_func=lambda i: session_options[i],
+            key="history_select"
+        )
+        if selected_idx > 0:
+            selected_session = sessions[selected_idx - 1]
+            st.caption(f"Episode length: {selected_session.episode_length}")
+            st.caption(f"Hosts: {selected_session.host_1_name} & {selected_session.host_2_name}")
+            if st.button("Load Settings", key="load_session"):
+                st.session_state['episode_length'] = selected_session.episode_length
+                st.session_state['host_1_name'] = selected_session.host_1_name
+                st.session_state['host_2_name'] = selected_session.host_2_name
+                st.success("Settings loaded! Refresh to apply.")
+    else:
+        st.caption("No previous sessions")
 
 # Streamlit App
 st.title("MyNoteBookLM")
@@ -105,6 +192,8 @@ else:
             st.success(f"✅ {len(saved_files)} file(s) uploaded successfully!")
             with st.spinner("Extracting content..."):
                 combined_text = extract_content_from_sources(saved_files)
+            st.session_state['input_type'] = 'file'
+            st.session_state['input_source'] = ', '.join([f.name for f in uploaded_files])
             st.success("Content extracted successfully.")
     
     with input_tab2:
@@ -122,6 +211,8 @@ else:
                         if combined_text:
                             st.success("✅ Content extracted successfully!")
                             st.session_state['combined_text'] = combined_text
+                            st.session_state['input_type'] = 'url'
+                            st.session_state['input_source'] = url_input
                         else:
                             st.error("Could not extract content from this URL.")
                     except Exception as e:
@@ -145,6 +236,8 @@ else:
             if text_input and len(text_input.strip()) > 50:
                 combined_text = text_input.strip()
                 st.session_state['combined_text'] = combined_text
+                st.session_state['input_type'] = 'text'
+                st.session_state['input_source'] = f"Pasted text ({len(combined_text)} chars)"
                 st.success(f"✅ Text loaded ({len(combined_text)} characters)")
             elif text_input:
                 st.warning("Please enter more text (at least 50 characters).")
@@ -203,9 +296,16 @@ else:
             if generate_script_btn:
                 with st.spinner("Generating conversational script..."):
                     try:
-                        script = content_generator.generate_conversational_script(combined_text)
+                        target_words = st.session_state.get('target_word_count')
+                        script = content_generator.generate_conversational_script(
+                            combined_text,
+                            target_word_count=target_words
+                        )
                         st.session_state['podcast_script'] = script
-                        st.success("✅ Script generated! Review and edit below, then click 'Generate Audio from Script'.")
+                        # Show length estimation
+                        estimated_duration = estimate_audio_duration(script)
+                        st.success(f"✅ Script generated! Estimated duration: ~{estimated_duration:.1f} minutes")
+                        st.info("Review and edit below, then click 'Generate Audio from Script'.")
                     except NotImplementedError:
                         st.error("Script generation is not supported by the current LLM provider.")
                     except Exception as e:
@@ -278,21 +378,46 @@ else:
                             # Convert to audio
                             os.makedirs(AUDIO_FILE_PATH, exist_ok=True)
                             audio_output_path = os.path.join(AUDIO_FILE_PATH, f"{timestamp}_audio_overview.mp3")
-                            asyncio.run(convert_script_to_audio(
+                            # Use custom intro/outro if uploaded, else fall back to defaults
+                            intro_path = st.session_state.get('custom_intro_path') or INTRO_MUSIC_PATH
+                            outro_path = st.session_state.get('custom_outro_path') or OUTRO_MUSIC_PATH
+                            tts_result = asyncio.run(convert_script_to_audio(
                                 script_text=script,
                                 output_audio_file=audio_output_path,
-                                intro_music_path=INTRO_MUSIC_PATH,
-                                outro_music_path=OUTRO_MUSIC_PATH,
+                                intro_music_path=intro_path,
+                                outro_music_path=outro_path,
                                 host_1_name=tts_host_1,
                                 host_2_name=tts_host_2
                             ))
-                            
+
+                            # Show TTS result summary if there were failures
+                            if tts_result and tts_result.failed_segments:
+                                st.warning(f"Audio generated with {tts_result.success_count} of {tts_result.total_segments} segments. "
+                                          f"{tts_result.failure_count} segment(s) failed and were skipped.")
+                                with st.expander("View failed segments"):
+                                    st.text(tts_result.get_failure_summary())
+
                             tracker.update(ProgressStage.FINALIZING, "Preparing audio file...")
                             if wait_for_file(audio_output_path):
                                 tracker.complete("Audio generated successfully!")
                                 st.audio(audio_output_path, format="audio/mpeg")
                                 st.success("✅ Audio overview created successfully!")
-                                
+
+                                # Save session to history
+                                session_entry = create_session_entry(
+                                    input_source=st.session_state.get('input_source', 'Unknown'),
+                                    input_type=st.session_state.get('input_type', 'unknown'),
+                                    episode_length=st.session_state.get('episode_length', 'Auto'),
+                                    host_1_name=tts_host_1,
+                                    host_2_name=tts_host_2,
+                                    script=script,
+                                    audio_path=audio_output_path,
+                                    script_path=script_filename,
+                                    custom_intro=intro_path if intro_path != INTRO_MUSIC_PATH else None,
+                                    custom_outro=outro_path if outro_path != OUTRO_MUSIC_PATH else None,
+                                )
+                                history_manager.save_session(session_entry)
+
                                 with open(script_filename, 'r') as f:
                                     st.download_button(
                                         label="📄 Download Transcript",
@@ -332,7 +457,14 @@ else:
                     # Generate conversational script
                     tracker.update(ProgressStage.GENERATING_SCRIPT, "Generating conversational script...")
                     try:
-                        script = content_generator.generate_conversational_script(combined_text)
+                        target_words = st.session_state.get('target_word_count')
+                        script = content_generator.generate_conversational_script(
+                            combined_text,
+                            target_word_count=target_words
+                        )
+                        # Show length estimation
+                        estimated_duration = estimate_audio_duration(script)
+                        st.info(f"Script generated. Estimated duration: ~{estimated_duration:.1f} minutes")
                     except NotImplementedError:
                         tracker.fail("Script generation not supported by current LLM provider")
                         st.error("Conversation script generation is not supported by the current LLM provider.")
@@ -350,14 +482,24 @@ else:
                     tracker.update(ProgressStage.GENERATING_AUDIO, "Converting script to audio (this may take a few minutes)...")
                     os.makedirs(AUDIO_FILE_PATH, exist_ok=True)
                     audio_output_path = os.path.join(AUDIO_FILE_PATH, f"{timestamp}_audio_overview.mp3")
-                    asyncio.run(convert_script_to_audio(
+                    # Use custom intro/outro if uploaded, else fall back to defaults
+                    intro_path = st.session_state.get('custom_intro_path') or INTRO_MUSIC_PATH
+                    outro_path = st.session_state.get('custom_outro_path') or OUTRO_MUSIC_PATH
+                    tts_result = asyncio.run(convert_script_to_audio(
                         script_text=script,
                         output_audio_file=audio_output_path,
-                        intro_music_path=INTRO_MUSIC_PATH,
-                        outro_music_path=OUTRO_MUSIC_PATH,
+                        intro_music_path=intro_path,
+                        outro_music_path=outro_path,
                         host_1_name=tts_host_1,
                         host_2_name=tts_host_2
                     ))
+
+                    # Show TTS result summary if there were failures
+                    if tts_result and tts_result.failed_segments:
+                        st.warning(f"Audio generated with {tts_result.success_count} of {tts_result.total_segments} segments. "
+                                  f"{tts_result.failure_count} segment(s) failed and were skipped.")
+                        with st.expander("View failed segments"):
+                            st.text(tts_result.get_failure_summary())
 
                     # Finalize
                     tracker.update(ProgressStage.FINALIZING, "Preparing audio file...")
@@ -365,7 +507,22 @@ else:
                         tracker.complete("Audio overview created successfully!")
                         st.audio(audio_output_path, format="audio/mpeg")
                         st.success("✅ Audio overview created successfully!")
-                        
+
+                        # Save session to history
+                        session_entry = create_session_entry(
+                            input_source=st.session_state.get('input_source', 'Unknown'),
+                            input_type=st.session_state.get('input_type', 'unknown'),
+                            episode_length=st.session_state.get('episode_length', 'Auto'),
+                            host_1_name=tts_host_1,
+                            host_2_name=tts_host_2,
+                            script=script,
+                            audio_path=audio_output_path,
+                            script_path=script_filename,
+                            custom_intro=intro_path if intro_path != INTRO_MUSIC_PATH else None,
+                            custom_outro=outro_path if outro_path != OUTRO_MUSIC_PATH else None,
+                        )
+                        history_manager.save_session(session_entry)
+
                         # Offer transcript download
                         with open(script_filename, 'r') as f:
                             st.download_button(

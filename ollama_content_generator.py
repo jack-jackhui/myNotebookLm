@@ -43,15 +43,34 @@ class OllamaContentGenerator(ContentGenerator):
         prompt = f"Summarize the following content:\n\n{document_content}\n\nThe summary should be concise and cover the main points."
         return self._generate_content(prompt, max_tokens=200)
 
-    def generate_conversational_script(self, content: str) -> str:
+    def generate_conversational_script(self, content: str, target_word_count: int = None) -> str:
         """
         Generate a conversation script based on provided content.
+
+        Args:
+            content: The source content to base the script on
+            target_word_count: Optional target word count (e.g., 750 for ~5min episode)
         """
+        # Build length instruction based on target
+        length_instruction = ""
+        max_tokens = 2000  # default
+        if target_word_count:
+            if target_word_count <= 750:
+                length_instruction = "Keep the conversation brief and focused, around 750 words total (~5 minutes when spoken). "
+                max_tokens = 1200
+            elif target_word_count <= 2250:
+                length_instruction = "Create a moderately detailed conversation, around 2,000-2,500 words (~15 minutes when spoken). "
+                max_tokens = 3500
+            elif target_word_count <= 4500:
+                length_instruction = "Create an in-depth, detailed conversation, around 4,000-4,500 words (~30 minutes when spoken). "
+                max_tokens = 6000
+
         prompt = (
             f"Create a conversation between two hosts, Jack and Corr, about the following content:\n\n{content}\n\n"
+            f"{length_instruction}"
             f"Each response should be conversational and reflect a back-and-forth dialogue style. Use explicit speaker tags like 'Jack:' and 'Corr:'."
         )
-        return self._generate_content(prompt, max_tokens=2000)
+        return self._generate_content(prompt, max_tokens=max_tokens)
 
     def generate_qa_content(
         self,

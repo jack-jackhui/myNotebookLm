@@ -133,6 +133,133 @@ class TestDownloadFeature:
         assert 'Download Script as Markdown' in webui_content or 'download_script_md' in webui_content
 
 
+class TestEpisodeLengthControl:
+    """Tests for episode length control feature."""
+
+    def test_episode_length_options_defined(self):
+        """Episode length options should be defined."""
+        with open('webui.py', 'r') as f:
+            content = f.read()
+        assert 'EPISODE_LENGTH_OPTIONS' in content
+
+    def test_episode_length_has_all_options(self):
+        """Should have Auto, 5min, 15min, 30min options."""
+        with open('webui.py', 'r') as f:
+            content = f.read()
+        assert '"Auto"' in content
+        assert '"5 min"' in content
+        assert '"15 min"' in content
+        assert '"30 min"' in content
+
+    def test_episode_length_selectbox(self):
+        """Should have a selectbox for episode length."""
+        with open('webui.py', 'r') as f:
+            content = f.read()
+        assert 'st.selectbox' in content
+        assert 'Target Duration' in content
+
+    def test_estimate_audio_duration_function(self):
+        """Should have audio duration estimation function."""
+        with open('webui.py', 'r') as f:
+            content = f.read()
+        assert 'def estimate_audio_duration' in content
+
+    def test_length_estimation_displayed(self):
+        """Length estimation should be displayed to user."""
+        with open('webui.py', 'r') as f:
+            content = f.read()
+        assert 'estimated_duration' in content
+        assert 'Estimated duration' in content
+
+    def test_target_word_count_passed_to_generator(self):
+        """Target word count should be passed to script generator."""
+        with open('webui.py', 'r') as f:
+            content = f.read()
+        assert 'target_word_count=' in content
+
+
+class TestContentGeneratorLength:
+    """Tests for content generator length parameter."""
+
+    def test_azure_generator_accepts_target_word_count(self):
+        """Azure content generator should accept target_word_count."""
+        with open('azure_content_generator.py', 'r') as f:
+            content = f.read()
+        assert 'target_word_count' in content
+        assert 'def generate_conversational_script(self, content: str, target_word_count' in content
+
+    def test_openai_generator_accepts_target_word_count(self):
+        """OpenAI content generator should accept target_word_count."""
+        with open('openai_content_generator.py', 'r') as f:
+            content = f.read()
+        assert 'target_word_count' in content
+
+    def test_deepseek_generator_accepts_target_word_count(self):
+        """DeepSeek content generator should accept target_word_count."""
+        with open('deepseek_content_generator.py', 'r') as f:
+            content = f.read()
+        assert 'target_word_count' in content
+
+    def test_ollama_generator_accepts_target_word_count(self):
+        """Ollama content generator should accept target_word_count."""
+        with open('ollama_content_generator.py', 'r') as f:
+            content = f.read()
+        assert 'target_word_count' in content
+
+    def test_base_generator_accepts_target_word_count(self):
+        """Base content generator should accept target_word_count."""
+        with open('generic_content_generator.py', 'r') as f:
+            content = f.read()
+        assert 'target_word_count' in content
+
+
+class TestCustomIntroOutro:
+    """Tests for custom intro/outro upload feature."""
+
+    def test_custom_intro_upload_exists(self):
+        """Should have file uploader for custom intro."""
+        with open('webui.py', 'r') as f:
+            content = f.read()
+        assert 'custom_intro_upload' in content
+        assert 'Upload Intro Audio' in content
+
+    def test_custom_outro_upload_exists(self):
+        """Should have file uploader for custom outro."""
+        with open('webui.py', 'r') as f:
+            content = f.read()
+        assert 'custom_outro_upload' in content
+        assert 'Upload Outro Audio' in content
+
+    def test_accepts_mp3_wav_formats(self):
+        """Should accept MP3 and WAV formats."""
+        with open('webui.py', 'r') as f:
+            content = f.read()
+        assert '"mp3"' in content
+        assert '"wav"' in content
+
+    def test_custom_paths_stored_in_session(self):
+        """Custom paths should be stored in session state."""
+        with open('webui.py', 'r') as f:
+            content = f.read()
+        assert 'custom_intro_path' in content
+        assert 'custom_outro_path' in content
+
+    def test_custom_paths_used_in_tts(self):
+        """Custom intro/outro paths should be used when generating audio."""
+        with open('webui.py', 'r') as f:
+            content = f.read()
+        assert "intro_path = st.session_state.get('custom_intro_path')" in content
+        assert "outro_path = st.session_state.get('custom_outro_path')" in content
+
+    def test_falls_back_to_defaults(self):
+        """Should fall back to default intro/outro if not uploaded."""
+        with open('webui.py', 'r') as f:
+            content = f.read()
+        # Check fallback pattern: custom_path or DEFAULT_PATH
+        assert 'or INTRO_MUSIC_PATH' in content
+        assert 'or OUTRO_MUSIC_PATH' in content
+
+
 class TestConfigurableHostNames:
     """Tests for configurable host names feature (Task 4)."""
 

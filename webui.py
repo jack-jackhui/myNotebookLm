@@ -20,6 +20,7 @@ from settings import (
     HOST_2_NAME,
 )
 from history import history_manager, create_session_entry
+from seo import init_seo
 
 # Define paths
 SCRIPT_FILE_PATH = './data/transcripts/'
@@ -53,9 +54,12 @@ def save_file(uploaded_file):
 
 # Configure the page
 st.set_page_config(
-    page_title="MyNoteBookLM - Open Source AI Note Assistant",
+    page_title="MyNotebookLM - Open Source AI Podcast Generator",
     page_icon="📊",
 )
+
+# Initialize SEO components
+init_seo()
 
 # Episode length configuration
 EPISODE_LENGTH_OPTIONS = {
@@ -161,9 +165,7 @@ with st.sidebar:
     else:
         st.caption("No previous sessions")
 
-# Streamlit App
-st.title("MyNoteBookLM")
-st.write("Upload documents, generate summaries, ask questions, and create a podcast-style audio version of your notes.")
+# Main App Content
 
 # Authenticate the user session
 if REQUIRE_LOGIN and not validate_credentials():

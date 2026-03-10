@@ -2,7 +2,7 @@ import feedparser
 from datetime import datetime, timedelta
 import re
 from newspaper import Article
-from config import load_rss_feeds
+from settings import load_rss_feeds
 
 def clean_text(text):
     """Remove HTML tags from the summary and return cleaned text."""

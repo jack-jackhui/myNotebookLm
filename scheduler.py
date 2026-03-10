@@ -1,7 +1,7 @@
 import schedule
 import time
 from main import generate_and_upload_podcast
-from config import UPLOAD_SCHEDULE
+from settings import UPLOAD_SCHEDULE
 
 def schedule_podcast():
     # Example UPLOAD_SCHEDULE: 'Monday at 08:00'

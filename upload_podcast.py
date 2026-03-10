@@ -4,8 +4,8 @@ import requests
 from requests.auth import HTTPBasicAuth
 from generate_episode_details import generate_episode_details
 import os
-from config import load_conversation_config
-from config import WORDPRESS_SITE, WORDPRESS_USERNAME, WORDPRESS_APP_PASSWORD
+from settings import load_conversation_config
+from settings import WORDPRESS_SITE, WORDPRESS_USERNAME, WORDPRESS_APP_PASSWORD
 
 # Ensure env variables are available
 if not all([WORDPRESS_SITE, WORDPRESS_USERNAME, WORDPRESS_APP_PASSWORD]):

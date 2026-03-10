@@ -1,11 +1,11 @@
 # content_generation.py
 
-# from config import load_conversation_config, LLM_PROVIDER, AZURE_OPENAI_CONFIG, OPENAI_CONFIG, OLLAMA_CONFIG
+# from settings import load_conversation_config, LLM_PROVIDER, AZURE_OPENAI_CONFIG, OPENAI_CONFIG, OLLAMA_CONFIG
 from openai_content_generator import OpenAIContentGenerator
 from ollama_content_generator import OllamaContentGenerator
 from azure_content_generator import AzureContentGenerator
 from deepseek_content_generator import DeepSeekContentGenerator
-from config import load_conversation_config, load_llm_config
+from settings import load_conversation_config, load_llm_config
 
 def create_content_generator():
     config = load_llm_config()

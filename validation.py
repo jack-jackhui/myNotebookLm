@@ -2,7 +2,7 @@ import requests
 import streamlit as st
 from functools import wraps
 import os
-from config import (
+from settings import (
     DJANGO_BACKEND_URL,
     API_KEY,
     FRONTENDURL,

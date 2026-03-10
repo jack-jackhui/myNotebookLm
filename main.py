@@ -2,7 +2,7 @@ import sys
 import os
 import re
 import asyncio
-from config import (
+from settings import (
     PODCAST_TITLE,
     PODCAST_DESCRIPTION,
     conversation_config_path,

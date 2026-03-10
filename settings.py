@@ -80,6 +80,10 @@ class EnvSettings(BaseSettings):
     podcast_title: Optional[str] = Field(default=None, alias="PODCAST_TITLE")
     podcast_description: Optional[str] = Field(default=None, alias="PODCAST_DESCRIPTION")
     upload_schedule: Optional[str] = Field(default=None, alias="UPLOAD_SCHEDULE")
+
+    # Host name settings (configurable podcast hosts)
+    host_1_name: str = Field(default="Jack", alias="HOST_1_NAME")
+    host_2_name: str = Field(default="Corr", alias="HOST_2_NAME")
     
     # Backend authentication settings
     django_backend_url: Optional[str] = Field(default=None, alias="DJANGO_BACKEND_URL")
@@ -334,6 +338,10 @@ API_KEY = settings.env.api_key
 FRONTENDURL = settings.env.frontend_url
 
 REQUIRE_LOGIN = settings.require_login
+
+# Host names (configurable podcast hosts)
+HOST_1_NAME = settings.env.host_1_name
+HOST_2_NAME = settings.env.host_2_name
 
 # Configuration objects
 config = settings.config

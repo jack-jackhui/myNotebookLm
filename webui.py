@@ -16,6 +16,8 @@ from settings import (
     INTRO_MUSIC_PATH,
     OUTRO_MUSIC_PATH,
     load_llm_config,
+    HOST_1_NAME,
+    HOST_2_NAME,
 )
 
 # Define paths
@@ -53,6 +55,24 @@ st.set_page_config(
     page_title="MyNoteBookLM - Open Source AI Note Assistant",
     page_icon="📊",
 )
+
+# Sidebar Configuration
+with st.sidebar:
+    st.header("Settings")
+    st.subheader("Podcast Host Names")
+    host_1_name = st.text_input(
+        "Host 1 Name",
+        value=HOST_1_NAME,
+        help="Name of the first podcast host (default from environment: HOST_1_NAME)"
+    )
+    host_2_name = st.text_input(
+        "Host 2 Name",
+        value=HOST_2_NAME,
+        help="Name of the second podcast host (default from environment: HOST_2_NAME)"
+    )
+    # Store in session state for use throughout the app
+    st.session_state['host_1_name'] = host_1_name
+    st.session_state['host_2_name'] = host_2_name
 
 # Streamlit App
 st.title("MyNoteBookLM")
@@ -195,43 +215,66 @@ else:
             if st.session_state.get('podcast_script'):
                 st.write("### 📝 Script Preview & Editor")
                 st.write("*Review the script below. You can edit it before generating audio.*")
-                
+
+                # Get configured host names
+                h1_name = st.session_state.get('host_1_name', HOST_1_NAME)
+                h2_name = st.session_state.get('host_2_name', HOST_2_NAME)
+
                 edited_script = st.text_area(
                     "Podcast Script",
                     value=st.session_state['podcast_script'],
                     height=400,
-                    help="Edit the script if needed. Speaker format: 'Jack:' and 'Corr:' or '**Jack**:' and '**Corr**:'"
+                    help=f"Edit the script if needed. Speaker format: '{h1_name}:' and '{h2_name}:' or '**{h1_name}**:' and '**{h2_name}**:'"
                 )
-                
+
                 # Update session state if edited
                 if edited_script != st.session_state['podcast_script']:
                     st.session_state['podcast_script'] = edited_script
-                
+
+                # Download transcript before TTS (Task 5)
+                st.download_button(
+                    label="📄 Download Script as TXT",
+                    data=edited_script,
+                    file_name=f"podcast_script_{datetime.now().strftime('%Y-%m-%d_%H-%M-%S')}.txt",
+                    mime="text/plain",
+                    key="download_script_txt"
+                )
+                st.download_button(
+                    label="📄 Download Script as Markdown",
+                    data=edited_script,
+                    file_name=f"podcast_script_{datetime.now().strftime('%Y-%m-%d_%H-%M-%S')}.md",
+                    mime="text/markdown",
+                    key="download_script_md"
+                )
+
                 col1, col2 = st.columns(2)
                 with col1:
                     if st.button("🎙️ Generate Audio from Script", key="gen_audio_from_script"):
                         script = st.session_state['podcast_script']
+                        # Get configured host names for TTS
+                        tts_host_1 = st.session_state.get('host_1_name', HOST_1_NAME)
+                        tts_host_2 = st.session_state.get('host_2_name', HOST_2_NAME)
                         # Progress tracking UI
                         progress_bar = st.progress(0)
                         status_text = st.empty()
-                        
+
                         def update_progress(status):
                             status_text.text(f"{status.message}")
                             progress_bar.progress(int(min(status.percent, 100)))
-                        
+
                         tracker = ProgressTracker(on_progress=update_progress)
-                        
+
                         try:
                             tracker.start()
                             tracker.update(ProgressStage.GENERATING_AUDIO, "Converting script to audio (this may take a few minutes)...")
-                            
+
                             # Save script to file
                             timestamp = datetime.now().strftime('%Y-%m-%d_%H-%M-%S')
                             script_filename = os.path.join(SCRIPT_FILE_PATH, f"{timestamp}_conversation_script.txt")
                             os.makedirs(SCRIPT_FILE_PATH, exist_ok=True)
                             with open(script_filename, 'w', encoding='utf-8') as f:
                                 f.write(script)
-                            
+
                             # Convert to audio
                             os.makedirs(AUDIO_FILE_PATH, exist_ok=True)
                             audio_output_path = os.path.join(AUDIO_FILE_PATH, f"{timestamp}_audio_overview.mp3")
@@ -239,7 +282,9 @@ else:
                                 script_text=script,
                                 output_audio_file=audio_output_path,
                                 intro_music_path=INTRO_MUSIC_PATH,
-                                outro_music_path=OUTRO_MUSIC_PATH
+                                outro_music_path=OUTRO_MUSIC_PATH,
+                                host_1_name=tts_host_1,
+                                host_2_name=tts_host_2
                             ))
                             
                             tracker.update(ProgressStage.FINALIZING, "Preparing audio file...")
@@ -268,19 +313,22 @@ else:
             
             # Direct to Audio (skip preview)
             if direct_audio_btn:
+                # Get configured host names for TTS
+                tts_host_1 = st.session_state.get('host_1_name', HOST_1_NAME)
+                tts_host_2 = st.session_state.get('host_2_name', HOST_2_NAME)
                 # Progress tracking UI
                 progress_bar = st.progress(0)
                 status_text = st.empty()
-                
+
                 def update_progress(status):
                     status_text.text(f"{status.message}")
                     progress_bar.progress(int(min(status.percent, 100)))
-                
+
                 tracker = ProgressTracker(on_progress=update_progress)
-                
+
                 try:
                     tracker.start()
-                    
+
                     # Generate conversational script
                     tracker.update(ProgressStage.GENERATING_SCRIPT, "Generating conversational script...")
                     try:
@@ -306,7 +354,9 @@ else:
                         script_text=script,
                         output_audio_file=audio_output_path,
                         intro_music_path=INTRO_MUSIC_PATH,
-                        outro_music_path=OUTRO_MUSIC_PATH
+                        outro_music_path=OUTRO_MUSIC_PATH,
+                        host_1_name=tts_host_1,
+                        host_2_name=tts_host_2
                     ))
 
                     # Finalize

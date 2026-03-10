@@ -1,7 +1,7 @@
 import os
 import logging
 from custom_text_to_speech import TextToSpeechService
-from settings import load_conversation_config
+from settings import load_conversation_config, HOST_1_NAME, HOST_2_NAME
 from pydub import AudioSegment
 import re
 import asyncio
@@ -13,23 +13,32 @@ logging.basicConfig(level=logging.ERROR)
 logger = logging.getLogger(__name__)
 
 
-def add_speaker_tags(script_text):
+def add_speaker_tags(script_text, host_1_name=None, host_2_name=None):
     """
     Convert speaker labels like '**Host Jack**: ' into <Person1> ... </Person1> and <Person2> ... </Person2>.
+
+    Args:
+        script_text: The script text to process
+        host_1_name: Name of first host (defaults to HOST_1_NAME from settings)
+        host_2_name: Name of second host (defaults to HOST_2_NAME from settings)
     """
+    # Use settings defaults if not provided
+    host_1 = host_1_name or HOST_1_NAME
+    host_2 = host_2_name or HOST_2_NAME
+
     # Define mapping from speaker to person tag
     speaker_mapping = {
-        'Jack': 'Person1',
-        'Corr': 'Person2'
+        host_1: 'Person1',
+        host_2: 'Person2'
     }
 
     # Function to replace speaker labels with tags
     def replace_speaker(match):
         # Check which group matched and use the appropriate speaker and dialogue groups
-        if match.group(1):  # If '**Jack**:' or '**Corr**:' matched
+        if match.group(1):  # If '**Host1**:' or '**Host2**:' matched
             speaker = match.group(1).strip()
             dialogue = match.group(2).strip()
-        elif match.group(3):  # If 'Jack:' or 'Corr:' matched
+        elif match.group(3):  # If 'Host1:' or 'Host2:' matched
             speaker = match.group(3).strip()
             dialogue = match.group(4).strip()
         else:
@@ -40,7 +49,7 @@ def add_speaker_tags(script_text):
         return f'<{person_tag}>{dialogue}</{person_tag}>'
 
     # Updated regex pattern to match both '**Speaker Name**: ' and 'Speaker Name: '
-    pattern = r'\*\*(Jack|Corr)\*\*:\s*(.*?)\n|^(Jack|Corr):\s*(.*?)$'
+    pattern = rf'\*\*({re.escape(host_1)}|{re.escape(host_2)})\*\*:\s*(.*?)\n|^({re.escape(host_1)}|{re.escape(host_2)}):\s*(.*?)$'
 
     # Replace all matches with tagged dialogues
     tagged_text = re.sub(
@@ -52,13 +61,23 @@ def add_speaker_tags(script_text):
     return tagged_text
 
 
-def validate_format_conversion(original_script, tagged_script_text):
+def validate_format_conversion(original_script, tagged_script_text, host_1_name=None, host_2_name=None):
     """
-    Validate that the conversion from 'Jack:' to <Person1> and 'Corr:' to <Person2> is correct.
+    Validate that the conversion from 'Host1:' to <Person1> and 'Host2:' to <Person2> is correct.
+
+    Args:
+        original_script: The original script text
+        tagged_script_text: The script text after tag conversion
+        host_1_name: Name of first host (defaults to HOST_1_NAME from settings)
+        host_2_name: Name of second host (defaults to HOST_2_NAME from settings)
     """
+    # Use settings defaults if not provided
+    host_1 = host_1_name or HOST_1_NAME
+    host_2 = host_2_name or HOST_2_NAME
+
     # Patterns to match the original speaker format
-    original_person1_pattern = re.compile(r'^Jack:\s*(.*)', re.MULTILINE)
-    original_person2_pattern = re.compile(r'^Corr:\s*(.*)', re.MULTILINE)
+    original_person1_pattern = re.compile(rf'^{re.escape(host_1)}:\s*(.*)', re.MULTILINE)
+    original_person2_pattern = re.compile(rf'^{re.escape(host_2)}:\s*(.*)', re.MULTILINE)
 
     # Patterns to match the converted speaker tags
     tagged_person1_pattern = re.compile(r'<Person1>(.*?)</Person1>', re.DOTALL)
@@ -82,13 +101,13 @@ def validate_format_conversion(original_script, tagged_script_text):
     for orig_dialogue, tagged_dialogue in zip(original_person1_dialogues, tagged_person1_dialogues):
         if orig_dialogue.strip() != tagged_dialogue.strip():
             logger.error(
-                f"Validation failed: Mismatch found for Jack's dialogue.\nOriginal: {orig_dialogue}\nTagged: {tagged_dialogue}")
+                f"Validation failed: Mismatch found for {host_1}'s dialogue.\nOriginal: {orig_dialogue}\nTagged: {tagged_dialogue}")
             return False
 
     for orig_dialogue, tagged_dialogue in zip(original_person2_dialogues, tagged_person2_dialogues):
         if orig_dialogue.strip() != tagged_dialogue.strip():
             logger.error(
-                f"Validation failed: Mismatch found for Corr's dialogue.\nOriginal: {orig_dialogue}\nTagged: {tagged_dialogue}")
+                f"Validation failed: Mismatch found for {host_2}'s dialogue.\nOriginal: {orig_dialogue}\nTagged: {tagged_dialogue}")
             return False
 
     logger.info("Format conversion validation passed.")
@@ -104,7 +123,7 @@ def validate_mp3(file_path):
         return False
 
 
-async def convert_script_to_audio(script_text, output_audio_file, intro_music_path=None, outro_music_path=None):
+async def convert_script_to_audio(script_text, output_audio_file, intro_music_path=None, outro_music_path=None, host_1_name=None, host_2_name=None):
     conversation_config = load_conversation_config()
     tts_provider = conversation_config.get('text_to_speech', {}).get('default_tts_provider', 'elevenlabs')
 
@@ -113,11 +132,11 @@ async def convert_script_to_audio(script_text, output_audio_file, intro_music_pa
     # Initialize our custom TextToSpeechService
     tts_service = TextToSpeechService(config=conversation_config, temp_audio_dir=conversation_config.get('text_to_speech', {}).get('temp_audio_dir', './temp_audio'))
 
-    # Add speaker tags
-    tagged_script_text = add_speaker_tags(script_text)
+    # Add speaker tags (using configurable host names)
+    tagged_script_text = add_speaker_tags(script_text, host_1_name, host_2_name)
 
     # Validate the format conversion before proceeding
-    if not validate_format_conversion(script_text, tagged_script_text):
+    if not validate_format_conversion(script_text, tagged_script_text, host_1_name, host_2_name):
         logger.error("Format conversion validation failed. Aborting audio generation.")
         return
 

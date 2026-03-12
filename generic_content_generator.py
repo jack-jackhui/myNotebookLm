@@ -4,13 +4,15 @@ class ContentGenerator:
     def __init__(self, config):
         self.config = config
 
-    def generate_conversational_script(self, content, target_word_count=None):
+    def generate_conversational_script(self, content, target_word_count=None, host_1_name="Jack", host_2_name="Corr"):
         """
         Generate a conversational script based on the provided content.
 
         Args:
             content: The source content to base the script on
             target_word_count: Optional target word count for the script (e.g., 750 for 5min)
+            host_1_name: Name of the first host (default: "Jack")
+            host_2_name: Name of the second host (default: "Corr")
         """
         raise NotImplementedError("Subclasses must implement this method")
 

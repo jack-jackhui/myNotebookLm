@@ -37,13 +37,15 @@ class AzureContentGenerator(ContentGenerator):
         prompt = f"Summarize the following content:\n\n{document_content}\n\nThe summary should be concise and cover the main points."
         return self._generate_content(prompt, max_tokens=200)
 
-    def generate_conversational_script(self, content: str, target_word_count: int = None) -> str:
+    def generate_conversational_script(self, content: str, target_word_count: int = None, host_1_name: str = "Jack", host_2_name: str = "Corr") -> str:
         """
         Generate a conversation script based on provided content.
 
         Args:
             content: The source content to base the script on
             target_word_count: Optional target word count (e.g., 750 for ~5min episode)
+            host_1_name: Name of the first host (default: "Jack")
+            host_2_name: Name of the second host (default: "Corr")
         """
 
         if not content:
@@ -64,9 +66,9 @@ class AzureContentGenerator(ContentGenerator):
                 max_tokens = 6000
 
         prompt = (
-            f"Create a conversation between two hosts, Jack and Corr, about the following content:\n\n{content}\n\n"
+            f"Create a conversation between two hosts, {host_1_name} and {host_2_name}, about the following content:\n\n{content}\n\n"
             f"{length_instruction}"
-            f"Each response should be conversational and reflect a back-and-forth dialogue style. Use explicit speaker tags like 'Jack:' and 'Corr:'."
+            f"Each response should be conversational and reflect a back-and-forth dialogue style. Use explicit speaker tags like '{host_1_name}:' and '{host_2_name}:'."
         )
 
         messages = [{"role": "user", "content": prompt}]

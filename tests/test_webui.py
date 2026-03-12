@@ -248,8 +248,8 @@ class TestCustomIntroOutro:
         """Custom intro/outro paths should be used when generating audio."""
         with open('webui.py', 'r') as f:
             content = f.read()
-        assert "intro_path = st.session_state.get('custom_intro_path')" in content
-        assert "outro_path = st.session_state.get('custom_outro_path')" in content
+        assert "intro_path = session_state.get('custom_intro_path')" in content
+        assert "outro_path = session_state.get('custom_outro_path')" in content
 
     def test_falls_back_to_defaults(self):
         """Should fall back to default intro/outro if not uploaded."""

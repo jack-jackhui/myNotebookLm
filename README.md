@@ -1,298 +1,124 @@
-<h1 align="center">
+<h1 align=center>
 MyNoteBookLm
 </h1>
 
-<div align="center">
+<div align=center>
     <h3><a href="README-zh.md">简体中文</a> | <a href="README.md">English</a></h3>
 </div>
 
 MyNoteBookLm is an open-source, AI-powered notebook & podcast application inspired by Google’s NotebookLM. 
-This project aims to provide users with a fully customizable and privacy-focused tool for note-taking, knowledge management, and podcast generation. 
-Users can set up their own environment and integrate various LLM and TTS services. 
-By default, MyNoteBookLm assumes Microsoft Azure OpenAI as the LLM provider. 
-User can also use alternative LLMs such as OpenAI, or local LLMs via Ollama. 
+This project provides a fully customizable and privacy-focused tool for note-taking, knowledge management, and professional podcast generation. 
 
 ## Features
 
-- **Open Source**: Fully open-source code, enabling users to customize as needed.
-- **LLM-Powered Knowledge Management**: Uses a large language model to provide contextual insights, organize information, and offer AI-driven suggestions.
-- **Podcast Generation**: Automatically generates podcasts from notes and curated content with multiple TTS provider options.
-- **Flexible API Integrations**: Supports a range of LLM and TTS providers, with Microsoft Azure OpenAI as the default LLM provider.
-- **User Interface**: A web-based UI powered by Streamlit for an intuitive and accessible experience.
-- **Multi-LLM Support**: Supports multiple LLMs such as MS Azure, OpenAI or local LLMs via Ollama.
+- **Open Source & Privacy-Focused**: Run locally or on your own server. Your data, your rules.
+- **Smart Knowledge Management**: 
+    - **Multi-Source Input**: Upload PDF, Word (Docx), Text, and PowerPoint (PPTX) files.
+    - **URL & YouTube Integration**: Extract content from web articles or YouTube transcripts.
+    - **Direct Text Input**: Paste and process content directly in the UI.
+- **Advanced Podcast Generation**:
+    - **Conversational Scripts**: Automatically transforms notes into engaging dialogues between two hosts.
+    - **Customizable Hosts**: Configure host names (e.g., "Jack" and "Corr") to personalize the experience.
+    - **Episode Length Control**: Choose from Auto, 5min, 15min, or 30min target durations.
+    - **Script Editor**: Preview, edit, and download transcripts (TXT/Markdown) before audio generation.
+    - **Parallel TTS Synthesis**: High-speed audio generation with configurable concurrency and retry logic.
+    - **Custom Intro/Outro**: Upload your own MP3/WAV files for professional branding.
+- **Session History**: Save and reload previous sessions, including scripts, audio, and settings.
+- **Flexible AI Integrations**:
+    - **LLM Support**: Microsoft Azure OpenAI (default), OpenAI, DeepSeek, and local LLMs via Ollama.
+    - **TTS Support**: Azure Text-to-Speech, OpenAI TTS, ElevenLabs, Edge TTS, and Spark TTS.
+- **SEO Optimized**: Built-in meta tags, Open Graph support, and structured data for web deployments.
+- **Robust Architecture**: Multi-stage Docker builds, health checks, and comprehensive error handling.
 
 ## Sample Podcast
 ### Podcast: AI Unchained
 
-Check out the amazing podcast created with the MyNotebookLm app! We welcome you to listen and share your thoughts.
+Listen to an example podcast created entirely with the MyNoteBookLm app.
 
-**Podcast Cover**：
+**Podcast Cover**:
 
 ![Podcast Cover](https://is1-ssl.mzstatic.com/image/thumb/Podcasts211/v4/d5/1d/aa/d51daa6d-b039-d949-8d8f-e6383d5a90f7/mza_15802649668481427365.png/300x300bb.webp)
 
 **Podcast Link**: [Click here to listen](https://podcasts.apple.com/au/podcast/ai-unchained/id1778941149)
 
-In this podcast, you'll experience the powerful features and charm of MyNotebookLm. We'll have in-depth discussions on a variety of interesting topics, presenting a perfect blend of knowledge and sound. Whether you're on your commute, working out, or just relaxing, you can tune in and start an exciting audio journey. Come and join us! 
-
 ## Online Usage 🚀
-The deployment and usage of the project may pose certain difficulties for novice users. Here, we offer a free online service. There is no need for deployment, and it can be used directly online, which is extremely convenient.
-- Project URL: https://mynotebooklm.jackhui.com.au
+Try the live version without any setup:
+- Project URL: [https://mynotebooklm.jackhui.com.au](https://mynotebooklm.jackhui.com.au)
 
 ## Getting Started
 
 ### Prerequisites
 
-- **Python 3.7+**
-- **API Keys** for the LLM and TTS services you wish to use
-
-### Supported Services
-
-#### Large Language Model (LLM) Providers
-- **Microsoft Azure OpenAI** (default)
-- **OpenAI API**
-- **Ollama** (local model support)
-
-#### Text-to-Speech (TTS) Providers
-- **ElevenLabs**
-- **Microsoft Azure Text-to-Speech**
-- **Edge TTS**
-- **OpenAI TTS**
+- **Python 3.9+**
+- **Docker** (optional, for containerized deployment)
+- **API Keys** for your chosen LLM and TTS providers.
 
 ### Setup
 
 #### 1. Clone the Repository
 
 ```bash
-git clone https://github.com/your-username/MyNoteBookLm.git
+git clone https://github.com/jack-jackhui/MyNoteBookLm.git
 cd MyNoteBookLm
 ```
 
 #### 2. Install Dependencies
-Install the necessary packages:
-
 ```bash
 pip install -r requirements.txt
 ```
 
-#### 3. Configure API Keys in .env File
-Create a .env file in the root directory to store your API keys and configuration.
+#### 3. Configuration
+The project uses a unified configuration system via `settings.py`.
 
+**A. Create a `.env` file:**
+```env
+# LLM
+AZURE_OPENAI_API_KEY=your_key
+AZURE_OPENAI_ENDPOINT=https://your-endpoint.openai.azure.com/
+AZURE_OPENAI_MODEL_NAME=gpt-4o
+
+# TTS
+AZURE_TTS_API_KEY=your_key
+AZURE_TTS_REGION=eastus
+
+# Podcast Defaults
+HOST_1_NAME=Jack
+HOST_2_NAME=Corr
+```
+
+**B. (Optional) Customize `config.yaml`:**
+Edit `config.yaml` to adjust paths, output directories, and advanced extraction settings.
+
+#### 4. Run the Application
+
+**Web Interface (Recommended):**
 ```bash
-touch .env
+streamlit run webui.py
 ```
 
-Add your API keys and settings in the .env file. Here’s an example:
-```
-AZURE_OPENAI_API_KEY=<Your Azure OpenAI API Key>
-AZURE_OPENAI_ENDPOINT=<Your Azure OpenAI Endpoint>
-AZURE_OPENAI_MODEL_NAME=<Your Model Name>
-AZURE_OPENAI_API_VERSION=<Your API Version>
-
-OPENAI_API_KEY=<Your OpenAI API Key>
-
-OLLAMA_HOST=<Ollama Host URL>
-OLLAMA_PORT=<Ollama Port>
-
-ELEVENLABS_API_KEY=<Your ElevenLabs API Key>
-
-PODCAST_TITLE="Your Podcast Title"
-PODCAST_DESCRIPTION="Description of your podcast content"
-```
-
-Replace <Your Azure OpenAI API Key>, etc., with your actual API keys.
-
-#### 4. Configure YAML Settings
-Provide a config.yaml file in the root directory with your personal settings. Here’s an example:
-```yaml
-output_directories:
-  transcripts: "./data/transcripts"
-  audio: "./data/audio"
-
-conversation_config_path: "./configs/conversation_config.yaml"
-INTRO_MUSIC_PATH: "./music/intro_music2.mp3"
-OUTRO_MUSIC_PATH: "./music/intro_music2.mp3"
-
-llm_provider:
-  # Set the LLM provider, options: "azure", "openai", "ollama"
-  provider: "openai"
-  azure:
-    endpoint: "your-azure-endpoint"
-    model_name: "gpt-4"
-    api_version: "2023-05-15"
-  openai:
-    model_name: "gpt-4"
-  ollama:
-    model_name: "llama3.2"  # Example local LLM model
-    host: "localhost"
-    port: 11434
-
-content_extractor:
-  youtube_url_patterns:
-    - "youtube.com"
-    - "youtu.be"
-
-youtube_transcriber:
-  remove_phrases:
-    - "[music]"
-
-logging:
-  level: "INFO"
-  format: "%(asctime)s - %(name)s - %(levelname)s - %(message)s"
-
-website_extractor:
-  markdown_cleaning:
-    remove_patterns:
-      - '\[.*?\]'  # Remove square brackets and their contents
-      - '\(.*?\)'  # Remove parentheses and their contents
-      - '^\s*[-*]\s'  # Remove list item markers
-      - '^\s*\d+\.\s'  # Remove numbered list markers
-      - '^\s*#+'  # Remove markdown headers
-  unwanted_tags:
-    - 'script'
-    - 'style'
-    - 'nav'
-    - 'footer'
-    - 'header'
-    - 'aside'
-    - 'noscript'
-  user_agent: 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/91.0.4472.124 Safari/537.36'
-  timeout: 10  # Request timeout in seconds
-```
-
-
-#### 5. Run MyNoteBookLm
-
-To start the app, run:
-```
-python main.py
-```
-
-To start the Streamlit-based web UI, run:
-```
-Streamlit run webui.py
-```
-- By default, the Streamlit UI requires authentication with a backend.
-- This can be disabled by updating `config.py`:
-```python
-REQUIRE_LOGIN = True  # Set to False to disable login requirement
-```
-
-## Usage
-
-### Note-Taking and Knowledge Management (With WebUI)
-
-- **Use** the LLM to organize your notes, get insights, suggest tags, summarize, and answer questions based on your notes.
-
-### Podcast Generation
-
-MyNoteBookLm offers an automated podcast feature that converts notes or curated content into audio episodes. You can choose your preferred TTS provider in the .env file.
-
-Supported TTS Providers:
-- OpenAI TTS: High-quality, natural-sounding TTS
-- ElevenLabs: High-quality, natural-sounding TTS
-- Microsoft Azure Text-to-Speech: Provides various voices and languages
-- Edge TTS and OpenAI TTS: Additional TTS options with good flexibility
-
-To generate and upload a podcast episode:
-```
+**CLI Version:**
+```bash
 python main.py --generate-podcast
 ```
 
-## Configuration
+## Docker Deployment
 
-Configurations are controlled via the `.env` file and a YAML configuration file. 
+The repository includes a production-ready `Dockerfile`.
 
-### `.env` File
+```bash
+docker build -t mynotebooklm .
+docker run -p 8501:8501 --env-file .env mynotebooklm
+```
 
-Key settings for the `.env` file include:
-
-- `AZURE_OPENAI_API_KEY`: API key for Microsoft Azure OpenAI (default LLM provider).
-- `ELEVENLABS_API_KEY`: API key for ElevenLabs TTS.
-- `PODCAST_TITLE` and `PODCAST_DESCRIPTION`: Customize your podcast episode title and description.
-
-You can add more configuration keys as needed for each API provider.
-
-### YAML Configuration File
-
-In addition to the `.env` file, you will also need to provide a YAML configuration file (`config.yaml`) with your personal settings. Here’s an example configuration:
-
-```yaml
-word_count: 4096
-conversation_style: 
-  - "engaging"
-  - "casual"
-  - "enthusiastic"
-  - "analytical"
-  - "humorous"
-roles_person1: "main summarizer"
-roles_person2: "questioner/clarifier"
-dialogue_structure: 
-  - "Introduction"
-  - "Main Content Summary"
-  - "Market and Economic Analysis"
-  - "Current Events Discussion"
-  - "Debate Segment"
-  - "Conclusion"
-podcast_name: "Your Podcast Name"
-podcast_tagline: "Your Podcast Tagline"
-output_language: "English"
-engagement_techniques: 
-  - "rhetorical questions"
-  - "anecdotes"
-  - "analogies"
-  - "humor"
-  - "playful debates"
-creativity: 1
-user_instructions: "Emulate the style of the All-In Podcast with hosts discussing recent technology, business, and political events. Encourage dynamic interactions, debates, and include humorous exchanges."
-
-text_to_speech:
-  default_tts_provider: "azure"  # Options: "elevenlabs", "openai", "edge", "azure"
-  default_tts_model: "tts-1-hd"
-  elevenlabs:
-    default_voices:
-      question: "Brian"
-      answer: "Jessica"
-    model: "eleven_multilingual_v2"
-  openai:
-    default_voices:
-      question: "echo"
-      answer: "nova"
-    model: "tts-1-hd"
-    deployment_name: "tts-hd"
-  edge:
-    default_voices:
-      question: "en-US-EricNeural"
-      answer: "en-US-JennyNeural"
-  azure:
-    default_voices:
-      question: "en-US-Andrew:DragonHDLatestNeural"
-      answer: "en-US-Ava:DragonHDLatestNeural"
-    audio_format: "mp3"
-  audio_format: "mp3"
-  temp_audio_dir: "data/audio/tmp/"
-  ending_message: "Thank you for listening!"
- ```
-#### Instructions:
-
-1. **Add your own configuration**: Replace the placeholders in the above YAML file with your own configuration (e.g., your API keys, podcast name, voices, etc.).
-2. **Save the YAML file**: Save the configuration in a file named `conversation_config.yaml` in the root directory of the project.
-
-This file will control various aspects of your podcast generation, including the dialogue structure, speech synthesis options, and more.
 ## Contributing
 
-Contributions are welcome! To contribute:
-
-1. Fork the repository.
-2. Create a feature branch.
-3. Make your changes and test them.
-4. Submit a pull request.
+Contributions are welcome! Please feel free to submit a Pull Request.
 
 ## Acknowledgements
 
-This project is inspired by and makes reference to the code from **Podcastfy**. 
-We would like to acknowledge their contributions and the open-source nature of their project. 
-Thank you to the Podcastfy team for providing a foundation that helped shape this project.
+- Inspired by Google’s NotebookLM.
+- References code from [Podcastfy](https://github.com/souzatharsis/podcastfy).
 
 ## License
 
-Check the [LICENSE](LICENSE) file for details.
+This project is licensed under the MIT License - see the [LICENSE](LICENSE) file for details.

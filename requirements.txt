@@ -106,7 +106,7 @@ platformdirs==4.3.6
 pluggy==1.5.0
 plumbum==1.9.0
 ply==3.11
-podcastfy==0.2.15
+podcastfy>=0.4.3
 propcache==0.2.0
 proto-plus>=1.25.0
 protobuf>=5.29.6

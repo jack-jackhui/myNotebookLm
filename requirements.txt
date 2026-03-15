@@ -99,7 +99,7 @@ nest-asyncio==1.6.0
 newspaper3k==0.2.8
 nltk==3.9.3
 numpy==1.26.4
-openai==1.52.2
+openai==1.56.1
 orjson==3.11.6
 packaging==24.1
 pandas==2.2.3

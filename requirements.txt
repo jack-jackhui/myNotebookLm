@@ -145,7 +145,7 @@ rich==13.9.3
 rpds-py==0.20.0
 rsa==4.9
 schedule==1.2.2
-setuptools==78.1.1
+setuptools==75.8.0
 sgmllib3k==1.0.0
 shapely==2.0.6
 shellingham==1.5.4

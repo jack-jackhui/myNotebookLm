@@ -78,7 +78,7 @@ langchain-community==0.4.1
 langchain-core==1.2.20
 langchain-google-genai==4.2.1
 langchain-google-vertexai==3.2.2
-langchain-text-splitters==0.3.11
+langchain-text-splitters==1.1.1
 langsmith==0.3.45
 Levenshtein==0.26.0
 lxml==5.3.0

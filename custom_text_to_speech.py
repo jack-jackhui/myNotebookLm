@@ -169,7 +169,7 @@ class CustomTextToSpeech:
         for i, res in enumerate(completed):
             idx, speaker, _ = segment_tasks[i]
             if isinstance(res, Exception):
-                failures.append((idx, speaker, str(res)))
+                failures.append((idx, speaker, str(res)))  # Graceful degradation
             elif res:
                 results.append(res)
             else:
@@ -185,7 +185,7 @@ class CustomTextToSpeech:
                 if res: results.append(res)
                 else: failures.append((idx, speaker, "No audio generated"))
             except Exception as e:
-                failures.append((idx, speaker, str(e)))
+                failures.append((idx, speaker, str(e)))  # Graceful degradation
         return results, failures
 
     async def _generate_single_segment(self, index, speaker, segment_text):

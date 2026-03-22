@@ -1,5 +1,3 @@
-"""Tests for TTS module functionality."""
-
 import pytest
 import asyncio
 from unittest.mock import Mock, patch, AsyncMock
@@ -46,7 +44,7 @@ class TestTTSServiceStructure:
         with open('custom_text_to_speech.py', 'r') as f:
             content = f.read()
         
-        assert 'def convert_to_speech(self, text, output_file, parallel=True' in content
+        assert 'async def convert_to_speech(self, text: str, output_file: str, parallel: bool = True' in content
     
     def test_semaphore_used_for_concurrency(self):
         """Semaphore should be used to limit concurrency."""

@@ -181,30 +181,29 @@ class TestEpisodeLengthControl:
 class TestContentGeneratorLength:
     """Tests for content generator length parameter."""
 
-    def test_azure_generator_accepts_target_word_count(self):
-        """Azure content generator should accept target_word_count."""
-        with open('azure_content_generator.py', 'r') as f:
-            content = f.read()
-        assert 'target_word_count' in content
-        assert 'def generate_conversational_script(self, content: str, target_word_count' in content
+    def test_azure_generator_inherits_target_word_count(self):
+        """Azure content generator should inherit target_word_count handling."""
+        from azure_content_generator import AzureContentGenerator
+        from generic_content_generator import ContentGenerator
+        assert issubclass(AzureContentGenerator, ContentGenerator)
 
-    def test_openai_generator_accepts_target_word_count(self):
-        """OpenAI content generator should accept target_word_count."""
-        with open('openai_content_generator.py', 'r') as f:
-            content = f.read()
-        assert 'target_word_count' in content
+    def test_openai_generator_inherits_target_word_count(self):
+        """OpenAI content generator should inherit target_word_count handling."""
+        from openai_content_generator import OpenAIContentGenerator
+        from generic_content_generator import ContentGenerator
+        assert issubclass(OpenAIContentGenerator, ContentGenerator)
 
-    def test_deepseek_generator_accepts_target_word_count(self):
-        """DeepSeek content generator should accept target_word_count."""
-        with open('deepseek_content_generator.py', 'r') as f:
-            content = f.read()
-        assert 'target_word_count' in content
+    def test_deepseek_generator_inherits_target_word_count(self):
+        """DeepSeek content generator should inherit target_word_count handling."""
+        from deepseek_content_generator import DeepSeekContentGenerator
+        from generic_content_generator import ContentGenerator
+        assert issubclass(DeepSeekContentGenerator, ContentGenerator)
 
-    def test_ollama_generator_accepts_target_word_count(self):
-        """Ollama content generator should accept target_word_count."""
-        with open('ollama_content_generator.py', 'r') as f:
-            content = f.read()
-        assert 'target_word_count' in content
+    def test_ollama_generator_inherits_target_word_count(self):
+        """Ollama content generator should inherit target_word_count handling."""
+        from ollama_content_generator import OllamaContentGenerator
+        from generic_content_generator import ContentGenerator
+        assert issubclass(OllamaContentGenerator, ContentGenerator)
 
     def test_base_generator_accepts_target_word_count(self):
         """Base content generator should accept target_word_count."""

@@ -90,7 +90,7 @@ mdurl==0.1.2
 mistune==3.0.2
 multidict==6.2.0
 mypy-extensions==1.0.0
-narwhals==1.13.3
+narwhals>=1.14.2
 nbclient==0.10.0
 nbconvert==7.17.0
 nbformat==5.10.4

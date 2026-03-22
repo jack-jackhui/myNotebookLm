@@ -370,3 +370,24 @@ try:
     settings.ensure_directories()
 except Exception as e:
     logger.warning(f"Could not create directories: {e}")
+
+def configure_logging(level: str = "INFO") -> None:
+    """Configure application-wide logging."""
+    import logging
+    
+    log_level = getattr(logging, level.upper(), logging.INFO)
+    
+    logging.basicConfig(
+        level=log_level,
+        format='%(asctime)s [%(levelname)s] %(name)s: %(message)s',
+        datefmt='%Y-%m-%d %H:%M:%S'
+    )
+    
+    # Reduce noise from third-party libraries
+    logging.getLogger('httpx').setLevel(logging.WARNING)
+    logging.getLogger('httpcore').setLevel(logging.WARNING)
+    logging.getLogger('urllib3').setLevel(logging.WARNING)
+
+
+# Initialize logging on import
+configure_logging()

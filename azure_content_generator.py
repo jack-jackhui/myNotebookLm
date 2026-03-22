@@ -1,317 +1,40 @@
-# azure_content_generator.py
+"""Azure OpenAI content generator."""
 
 from openai import AzureOpenAI
+from typing import Dict, Any, Optional
+import logging
+
 from generic_content_generator import ContentGenerator
 
-from datetime import datetime
-import os
+logger = logging.getLogger(__name__)
+
 
 class AzureContentGenerator(ContentGenerator):
-    def __init__(self, conversation_config=None, api_config=None):
+    """Content generator using Azure OpenAI."""
+    
+    def __init__(self, conversation_config: Optional[Dict[str, Any]] = None, api_config: Optional[Dict[str, Any]] = None):
         super().__init__(config=conversation_config)
-
-        # Use values from api_config if provided, otherwise fallback to default config values
-        api_key = api_config.get('api_key')
-        api_version = api_config.get('api_version')
-        azure_endpoint = api_config.get('endpoint')
+        
+        api_config = api_config or {}
         self.azure_model = api_config.get('model_name')
-
+        
         self.client = AzureOpenAI(
-            api_key=api_key,
-            api_version=api_version,
-            azure_endpoint=azure_endpoint,
+            api_key=api_config.get('api_key'),
+            api_version=api_config.get('api_version'),
+            azure_endpoint=api_config.get('endpoint'),
             azure_deployment=self.azure_model
         )
-
-    def answer_question(self, question: str, document_content: str) -> str:
-        """
-        Generate an answer to a question based on document content using Azure OpenAI.
-        """
-        prompt = f"Answer the following question based on the content provided:\n\nContent:\n{document_content}\n\nQuestion: {question}\nAnswer concisely."
-        return self._generate_content(prompt, max_tokens=150)
-
-    def generate_summary(self, document_content: str) -> str:
-        """
-        Generate a summary of the document content using Azure OpenAI.
-        """
-        prompt = f"Summarize the following content:\n\n{document_content}\n\nThe summary should be concise and cover the main points."
-        return self._generate_content(prompt, max_tokens=200)
-
-    def generate_conversational_script(self, content: str, target_word_count: int = None, host_1_name: str = "Jack", host_2_name: str = "Corr") -> str:
-        """
-        Generate a conversation script based on provided content.
-
-        Args:
-            content: The source content to base the script on
-            target_word_count: Optional target word count (e.g., 750 for ~5min episode)
-            host_1_name: Name of the first host (default: "Jack")
-            host_2_name: Name of the second host (default: "Corr")
-        """
-
-        if not content:
-            raise ValueError("Content cannot be empty for script generation.")
-
-        # Build length instruction based on target
-        length_instruction = ""
-        max_tokens = 1500  # default
-        if target_word_count:
-            if target_word_count <= 750:
-                length_instruction = "Keep the conversation brief and focused, around 750 words total (~5 minutes when spoken). "
-                max_tokens = 1200
-            elif target_word_count <= 2250:
-                length_instruction = "Create a moderately detailed conversation, around 2,000-2,500 words (~15 minutes when spoken). "
-                max_tokens = 3500
-            elif target_word_count <= 4500:
-                length_instruction = "Create an in-depth, detailed conversation, around 4,000-4,500 words (~30 minutes when spoken). "
-                max_tokens = 6000
-
-        prompt = (
-            f"Create a conversation between two hosts, {host_1_name} and {host_2_name}, about the following content:\n\n{content}\n\n"
-            f"{length_instruction}"
-            f"Each response should be conversational and reflect a back-and-forth dialogue style. Use explicit speaker tags like '{host_1_name}:' and '{host_2_name}:'."
+    
+    @property
+    def provider_name(self) -> str:
+        return "azure"
+    
+    def _call_llm(self, messages: list, max_tokens: int, temperature: float = 0.7) -> str:
+        """Make Azure OpenAI API call."""
+        response = self.client.chat.completions.create(
+            messages=messages,
+            model=self.azure_model,
+            temperature=temperature,
+            max_tokens=max_tokens
         )
-
-        messages = [{"role": "user", "content": prompt}]
-        try:
-            response = self.client.chat.completions.create(
-                messages=messages,
-                model=self.azure_model,
-                temperature=0.7,
-                max_tokens=max_tokens
-            )
-
-            script = response.choices[0].message.content
-            if not script:
-                raise ValueError("Empty script generated.")
-            return script.strip()
-
-        except Exception as e:
-            print(f"Failed to generate conversational script: {str(e)}")
-            return ""
-
-    def generate_qa_content(
-        self,
-        input_texts: str = "",
-        image_file_paths: list = [],
-        output_filepath: str = None,
-        is_first_episode: bool = False,
-        is_segment: bool = False,
-        is_opening: bool = False,
-        is_ending: bool = False
-    ) -> str:
-        """
-        Generate the conversation script using Azure OpenAI.
-        """
-        # Prepare the prompt based on conversation_config
-        conversation_config = self.config or {}
-        podcast_name = conversation_config.get('podcast_name', 'AI Unchained')
-        podcast_tagline = conversation_config.get('podcast_tagline', 'Your Guide to AI, Web 3.0, and the Cutting Edge of Tech')
-        user_instructions = conversation_config.get('user_instructions', '')
-        creativity = conversation_config.get('creativity', 0.7)
-        max_tokens = conversation_config.get('word_count', 3000)
-
-        # Adjust the prompt based on whether it’s the first episode
-        if is_opening:
-            # Opening prompt with consideration for the first episode
-            if is_first_episode:
-                system_prompt = (
-                    f"You are an AI assistant generating the first-episode opening script for '{podcast_name}'. "
-                    f"Each section should explicitly include the speaker's name (Jack or Corr) followed by a colon and dialogue. \n"
-                    f"Your script should introduce the show, delve into its concept, and give insights on what the audience can expect in future episodes."
-                )
-                user_prompt = (
-                    f"{user_instructions}\n\n"
-                    f"This is the first episode of '{podcast_name}'. Provide a welcoming introduction to the show, explaining its concept and the value it offers. "
-                    f"Hosts: Jack(male) and Corr(female)\n"
-                    f"Use explicit speaker tags, e.g., 'Jack: [Dialogue]', 'Corr: [Dialogue]'.\n"
-                    f"Content to discuss:\n{input_texts}\n"
-                    f"This is just the opening segment of a long single episode so do not include any ending or conclusion of the episode."
-                )
-            else:
-                # Regular opening prompt for non-first episodes
-                system_prompt = (
-                    f"You are an AI assistant generating an opening script for the ongoing episode of '{podcast_name}'. \n"
-                    f"Each section should explicitly include the speaker's name (Jack or Corr) followed by a colon and dialogue. \n"
-                    f"Set the context for today’s topics and welcome the audience."
-                )
-                user_prompt = (
-                    f"{user_instructions}\n\n"
-                    f"Hosts: Jack and Corr\n"
-                    f"Opening content: {input_texts}\n\n"
-                    f"Provide a welcoming introduction without repeating introductory information from the first episode.\n"
-                    f"Use explicit speaker tags, e.g., 'Jack: [Dialogue]', 'Corr: [Dialogue]'."
-                )
-        elif is_ending:
-            # Closing prompt
-            system_prompt = (
-                f"You are an AI assistant generating the closing script for an episode of '{podcast_name}'. "
-                f"Summarize the main points, thank the audience, and offer any final thoughts.\n"
-                f"Each section should explicitly include the speaker's name (Jack or Corr) followed by a colon and dialogue."
-            )
-            user_prompt = (
-                f"{user_instructions}\n\n"
-                f"Hosts: Jack and Corr\n"
-                f"Ending content: {input_texts}\n\n"
-                f"Ensure this is a concluding segment, wrapping up the discussion and leaving the audience with a closing message.\n"
-                f"Use explicit speaker tags, e.g., 'Jack: [Dialogue]', 'Corr: [Dialogue]'."
-            )
-        elif is_segment:
-            # Prompt for segments within the same episode to ensure continuity
-            system_prompt = (
-                f"You are an AI assistant generating a podcast segment script for the ongoing episode of '{podcast_name}'.\n"
-                f"Each section should explicitly include the speaker's name (Jack or Corr) followed by a colon and dialogue. \n"                
-                f"This segment is part of a larger conversation within a single episode. Avoid starting or ending the segment with "
-                f"phrases like 'Welcome back' or 'Thanks for listening.' Ensure smooth continuity as part of an ongoing discussion."
-            )
-            user_prompt = (
-                f"{user_instructions}\n\n"
-                f"Hosts: Jack and Corr\n"
-                f"This is a part of a larger conversation within a single episode. Do not add any episode opening content or episode ending content.\n"
-                f"Topic for this segment: {input_texts}\n\n"
-                f"Encourage the hosts to engage in a deep dialogue on this topic, sharing personal insights and experiences, and ensuring "
-                f"a dynamic interaction that connects smoothly with the rest of the episode."
-                f"Use layman's language to explain any technology concept and make it simple to understand by normal person.\n"
-                f"Use explicit speaker tags, e.g., 'Jack: [Dialogue]', 'Corr: [Dialogue]'."
-            )
-        else:
-            # Standard prompt for introductory or concluding content
-            system_prompt = (
-                f"You are an AI assistant that generates insightful and engaging podcast scripts in the style of All-in Podcasts.\n"
-                f"The podcast name is '{podcast_name}' and tagline is '{podcast_tagline}'. The conversation should be insightful, dynamic, and engaging.\n"
-                f"Each section should explicitly include the speaker's name (Jack or Corr) followed by a colon and dialogue."
-            )
-            user_prompt = (
-                f"{user_instructions}\n\n"
-                f"Hosts: Jack(male) and Corr(female)\n"
-                f"{input_texts}\n\n"
-                f"Encourage the hosts to engage in a rich dialogue, exploring topics deeply, sharing personal insights and experiences. "
-                f"Use layman's language to explain any technology concept and make it simple to understand by a normal person.\n"
-                f"Use explicit speaker tags, e.g., 'Jack: [Dialogue]', 'Corr: [Dialogue]'."
-            )
-
-        messages = [
-            {"role": "system", "content": system_prompt},
-            {"role": "user", "content": user_prompt}
-        ]
-
-        try:
-            # Call the Azure OpenAI API using the AzureOpenAI client
-            response = self.client.chat.completions.create(
-                messages=messages,
-                model=self.azure_model,  # Your deployment name
-                temperature=creativity,
-                max_tokens=max_tokens
-            )
-
-            # Extract the generated script
-            script = response.choices[0].message.content
-            # print(f"DEBUG: LLM Response:\n{script}\n")
-
-            # Define the output directory and filename with date and time
-            output_directory = 'data/transcripts'
-            os.makedirs(output_directory, exist_ok=True)
-            timestamp = datetime.now().strftime('%Y-%m-%d_%H-%M-%S')
-            output_filepath = os.path.join(output_directory, f"{timestamp}_conversation_script.txt")
-
-            # Save the script if an output filepath is provided
-            if output_filepath:
-                with open(output_filepath, 'w', encoding='utf-8') as f:
-                    f.write(script)
-
-            return script.strip()
-
-        except Exception as e:
-            print(f"Failed to generate conversation script: {str(e)}")
-            return ""
-
-    def iterative_script_generation(self, input_segments: list, is_first_episode: bool = False) -> str:
-        """
-        Generate the full script by processing each segment iteratively.
-        """
-        full_script = ""
-
-        """
-        # Generate the opening segment
-        print("Debug: Generating episode opening...")
-        opening_prompt = (
-            "This is the opening of the episode, introducing the show and setting up the topics to be discussed. "
-            "This will be a single, continuous episode with multiple topics."
-        )
-        opening_script = self.generate_qa_content(
-            input_texts=opening_prompt,
-            is_first_episode=is_first_episode,
-            is_segment=False
-        )
-        print(f"DEBUG: Opening prompt sent to LLM:\n{opening_prompt}\n")
-        full_script += opening_script + "\n\n"
-        """
-
-        # Generate each segment as a continuation of the previous discussion
-        for i, segment in enumerate(input_segments):
-            print(f"Generating script for segment {i + 1}: {segment[:30]}...")  # Log progress for each segment
-            segment_prompt = (
-                f"Continue the ongoing discussion for the current episode, focusing on the topic: {segment}. "
-                "Ensure this is a continuation without repeating the opening or closing."
-            )
-            segment_script = self.generate_qa_content(
-                input_texts=segment_prompt,
-                is_first_episode=False,
-                is_segment=True  # Mark this as part of the main content
-            )
-            # print(f"DEBUG: Segment prompt sent to LLM:\n{segment_prompt}\n")
-            full_script += segment_script + "\n\n"  # Add each generated segment to the full script
-
-        """
-        # Generate the closing segment
-        print("Debug: Generating episode closing...")
-        closing_prompt = (
-            "This is the closing of the episode, summarizing the topics covered and thanking the audience."
-        )
-
-        closing_script = self.generate_qa_content(
-            input_texts=closing_prompt,
-            is_first_episode=False,
-            is_segment=False
-        )
-        print(f"DEBUG: Closing prompt sent to LLM:\n{closing_prompt}\n")
-        full_script += closing_script
-        """
-
-        return full_script.strip()
-
-    def generate_title(self, transcript_text: str) -> str:
-        """
-        Generate an engaging title for the podcast episode based on transcript content.
-        """
-        prompt = (
-            f"Generate an engaging title for a podcast episode based on the following content:\n\n{transcript_text}\n\n"
-            "Title should be short, catchy, and summarize the main topic."
-        )
-        return self._generate_content(prompt, max_tokens=50)  # Limiting tokens for a concise title
-
-    def generate_description(self, transcript_text: str) -> str:
-        """
-        Generate a concise and engaging description for the podcast episode based on transcript content.
-        """
-        prompt = (
-            f"Generate a concise and engaging description for a podcast episode based on the following content:\n\n{transcript_text}\n\n"
-            "The description should be informative, enticing, and give an overview of the main points discussed."
-        )
-        return self._generate_content(prompt, max_tokens=150)  # Allowing more tokens for a richer description
-
-    def _generate_content(self, prompt: str, max_tokens: int) -> str:
-        """
-        Internal helper to call the OpenAI API with a specific prompt and return the response content.
-        """
-        messages = [{"role": "user", "content": prompt}]
-        try:
-            response = self.client.chat.completions.create(
-                messages=messages,
-                model=self.azure_model,
-                max_tokens=max_tokens,
-                temperature=0.7
-            )
-            return response.choices[0].message.content.strip()
-        except Exception as e:
-            print(f"Failed to generate content: {str(e)}")
-            return ""
+        return response.choices[0].message.content.strip()

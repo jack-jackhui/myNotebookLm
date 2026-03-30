@@ -76,6 +76,16 @@ class EnvSettings(BaseSettings):
     # ElevenLabs settings
     elevenlabs_api_key: Optional[str] = Field(default=None, alias="ELEVENLABS_API_KEY")
     
+    # Azure AI Inference SDK settings (for GPT-5.x models)
+    azure_ai_endpoint: Optional[str] = Field(default=None, alias="AZURE_AI_ENDPOINT")
+    azure_ai_api_key: Optional[str] = Field(default=None, alias="AZURE_AI_API_KEY")
+    azure_deployment: Optional[str] = Field(default=None, alias="AZURE_DEPLOYMENT")
+    
+    # Telegram notification settings
+    telegram_bot_token: Optional[str] = Field(default=None, alias="TELEGRAM_BOT_TOKEN")
+    telegram_chat_id: Optional[str] = Field(default=None, alias="TELEGRAM_CHAT_ID")
+    notification_email: Optional[str] = Field(default=None, alias="NOTIFICATION_EMAIL")
+    
     # Podcast settings
     podcast_title: Optional[str] = Field(default=None, alias="PODCAST_TITLE")
     podcast_description: Optional[str] = Field(default=None, alias="PODCAST_DESCRIPTION")

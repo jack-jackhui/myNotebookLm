@@ -2,6 +2,7 @@ import sys
 import os
 import re
 import asyncio
+import traceback
 from settings import (
     PODCAST_TITLE,
     PODCAST_DESCRIPTION,
@@ -15,7 +16,9 @@ from content_generation import generate_conversation_script
 from text_to_speech_conversion import convert_script_to_audio
 from upload_podcast import upload_podcast_episode
 from news_tracker import get_recent_articles
+from notifications import notify_error, notify_success
 from datetime import datetime
+
 
 def is_first_episode():
     """Check if this is the first episode."""
@@ -60,16 +63,17 @@ def split_topics(combined_text):
 
 
 async def generate_and_upload_podcast():
+    current_step = "Initialization"
     try:
-        # Ensure API keys are available
-        # if not all([AZURE_OPENAI_API_KEY, AZURE_OPENAI_ENDPOINT, ELEVENLABS_API_KEY]):
-        #    raise ValueError("One or more API keys are missing.")
-
         print(f"Fetching recent articles for podcast generation at {datetime.now()}...")
+        current_step = "Fetching Articles"
 
         # Fetch recent articles from news sources
         articles = get_recent_articles()
         print(f"Fetched {len(articles)} articles.\n")
+
+        if not articles:
+            raise ValueError("No articles fetched from news sources")
 
         # Combine text by checking if 'content' exists, and clean HTML tags if needed
         article_texts = " ".join(clean_html(article.get('content', '')) for article in articles)
@@ -78,15 +82,12 @@ async def generate_and_upload_podcast():
         print("\nFetched Article Titles and Content for Verification:")
         for i, article in enumerate(articles, 1):
             print(f"Article {i}: {article['title']}")
-            # print(f"Content:\n{article['content']}\n")
 
         # Add paths to any local files you want to include
-        local_files = [
-            # "./source_files/Galapago_Investor_Deck_SeedRound_18092023.pdf",
-            # Add more local PDFs or documents as needed
-        ]
+        local_files = []
 
         # Extract content from both news articles and local files
+        current_step = "Extracting Content"
         print("Extracting content...")
         combined_text = article_texts + "\n" + extract_content_from_sources(local_files)
 
@@ -95,22 +96,9 @@ async def generate_and_upload_podcast():
         print("\n--- Topics and Content Verification ---")
         for topic, content in topics.items():
             print(f"Topic: {topic}")
-            # print(f"Content: {content}\n" if content else "No content found for this topic.\n")
-
-        """
-        # Azure OpenAI configuration dictionary
-        azure_openai_config = {
-            'openai_api_key': AZURE_OPENAI_API_KEY,
-            'openai_api_base': AZURE_OPENAI_ENDPOINT,
-            'openai_api_version': AZURE_OPENAI_API_VERSION,
-            'deployment_name': AZURE_OPENAI_MODEL_NAME,
-            'model_name': AZURE_OPENAI_MODEL_NAME
-        }
-
-        conversation_config_path: str = 'conversation_config.yaml'
-        """
 
         # Generate the conversation script, passing topics for iterative generation
+        current_step = "Generating Conversation Script"
         print("Generating conversation script...")
         script = generate_conversation_script(
             combined_text=combined_text,
@@ -120,40 +108,35 @@ async def generate_and_upload_podcast():
             topics=topics  # Pass the topics to enable iterative generation
         )
 
-        """
-        # Generate the conversation script
-        print("Generating conversation script...")
-        script = generate_conversation_script(
-            combined_text=combined_text,
-            podcast_title=PODCAST_TITLE,
-            podcast_description=PODCAST_DESCRIPTION,
-            azure_openai_config=azure_openai_config,  # Pass the Azure OpenAI config
-            conversation_config_path=conversation_config_path,
-            is_first_episode=is_first_episode()
-        )
-        """
+        if not script or len(script.strip()) < 100:
+            raise ValueError(f"Generated script is too short or empty: {len(script)} chars")
 
-        # Save the script to a file (optional)
+        # Save the script to a file
+        current_step = "Saving Script"
         timestamp = datetime.now().strftime('%Y-%m-%d_%H-%M-%S')
         script_file_path = './data/transcripts/'
+        os.makedirs(script_file_path, exist_ok=True)
         script_filename = os.path.join(script_file_path, f"{timestamp}_final_conversation_script.txt")
         with open(script_filename, 'w', encoding='utf-8') as f:
             f.write(script)
 
         output_directory = './data/audio/podcast'
-        os.makedirs(output_directory, exist_ok=True)  # Create the directory if it doesn’t exist
-        # timestamp = datetime.now().strftime('%Y-%m-%d_%H-%M-%S')
+        os.makedirs(output_directory, exist_ok=True)
         output_audio_file = os.path.join(output_directory, f"{timestamp}_podcast_episode.mp3")
 
         # Convert the script to audio
+        current_step = "Converting Script to Audio (TTS)"
         print("Converting script to audio...")
-        output_audio_file = output_audio_file
         await convert_script_to_audio(
             script_text=script,
             output_audio_file=output_audio_file,
             intro_music_path=INTRO_MUSIC_PATH,
             outro_music_path=OUTRO_MUSIC_PATH
         )
+
+        # Verify audio file was created
+        if not os.path.exists(output_audio_file) or os.path.getsize(output_audio_file) < 1000:
+            raise ValueError(f"Audio file not created or too small: {output_audio_file}")
 
         print(f"Podcast generated and saved as: {output_audio_file}")
 
@@ -162,7 +145,7 @@ async def generate_and_upload_podcast():
             set_first_episode_done()
 
         # Upload the podcast episode
-
+        current_step = "Uploading Podcast Episode"
         print("Uploading podcast episode...")
         upload_podcast_episode(
             audio_file_path=output_audio_file,
@@ -170,9 +153,27 @@ async def generate_and_upload_podcast():
         )
         print("Podcast episode created and uploaded successfully!")
 
+        # Send success notification
+        notify_success(
+            f"Podcast episode generated and uploaded!\n\n"
+            f"<b>Articles:</b> {len(articles)}\n"
+            f"<b>Topics:</b> {', '.join(topics.keys())}\n"
+            f"<b>Audio:</b> {os.path.basename(output_audio_file)}",
+            context="Podcast Generation"
+        )
 
     except Exception as e:
+        error_msg = f"Failed at step: {current_step}\n\nError: {str(e)}"
         print(f"An error occurred: {e}")
+        print(f"Stack trace:\n{traceback.format_exc()}")
+        
+        # Send error notification
+        notify_error(
+            error_message=error_msg,
+            exception=e,
+            context=f"Podcast Generation - {current_step}"
+        )
+        
         sys.exit(1)
 
 

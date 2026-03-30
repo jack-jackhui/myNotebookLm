@@ -35,6 +35,6 @@ class AzureContentGenerator(ContentGenerator):
             messages=messages,
             model=self.azure_model,
             temperature=temperature,
-            max_tokens=max_tokens
+            max_completion_tokens=max_tokens
         )
         return response.choices[0].message.content.strip()

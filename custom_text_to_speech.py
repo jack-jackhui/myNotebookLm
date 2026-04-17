@@ -294,3 +294,6 @@ class CustomTextToSpeech:
     def split_script_by_speaker(self, text: str) -> List[Tuple[str, str]]:
         pattern = re.compile(r'<(Person1|Person2)>(.*?)</\1>', re.DOTALL)
         return [(speaker, dialogue.strip()) for speaker, dialogue in pattern.findall(text)]
+
+# Alias for backward compatibility
+TextToSpeechService = CustomTextToSpeech

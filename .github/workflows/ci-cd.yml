@@ -18,8 +18,8 @@ jobs:
       
       - uses: actions/setup-python@v5
         with:
-          python-version: '3.11'
-          cache: 'pip'
+          python-version: "3.11"
+          cache: "pip"
       
       - name: Install dependencies
         run: |
@@ -79,7 +79,10 @@ jobs:
             cd /home/azureuser/ai-video
             docker compose pull mynotebooklm
             docker compose up -d mynotebooklm
-            echo "Deployed mynotebooklm at $(date)"
+            # Run pre-flight check to verify deployment
+            sleep 5
+            docker exec mynotebooklm python3 /mynotebooklm/preflight_check.py
+            echo "Deployed and verified mynotebooklm at $(date)"
       
       - name: Notify Telegram (Success)
         if: success()

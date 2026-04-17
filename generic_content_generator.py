@@ -59,6 +59,25 @@ class ContentGenerator(ABC):
                 TokenLimits.LONG_EPISODE
             )
     
+    def _get_host_personas(self, host_1_name: str, host_2_name: str) -> str:
+        """Get host personality descriptions for prompts."""
+        return (
+            f"HOST PERSONALITIES (IMPORTANT - make them distinct):\n"
+            f"- {host_1_name} (male): The OPTIMIST. Sees opportunity in every development. Gets genuinely excited about "
+            f"new tech. Tends to focus on potential upsides and possibilities. Sometimes needs to be reined in. "
+            f"Uses phrases like 'This could be huge', 'I'm bullish on this', 'Here's why this matters'.\n"
+            f"- {host_2_name} (female): The SKEPTIC. Plays devil's advocate. Asks 'but what about...' questions. "
+            f"Points out risks, downsides, and what could go wrong. Grounded in reality. Not negative, just cautious. "
+            f"Uses phrases like 'Hold on though', 'Let's pump the brakes', 'The flip side is', 'I'm not so sure'.\n\n"
+            f"DEBATE DYNAMICS:\n"
+            f"- They should DISAGREE on at least one major point per topic\n"
+            f"- {host_1_name} pushes for bold predictions, {host_2_name} tempers expectations\n"
+            f"- Include moments of genuine back-and-forth, not just taking turns\n"
+            f"- Occasional interruptions and 'wait wait wait' moments are good\n"
+            f"- They can change each other's minds sometimes\n"
+            f"- End debates with clear positions: 'So we agree to disagree' or 'Okay, you've convinced me'\n"
+        )
+
     def _build_prompts(
         self,
         input_texts: str,
@@ -70,80 +89,100 @@ class ContentGenerator(ABC):
         is_ending: bool = False
     ) -> Tuple[str, str]:
         """Build system and user prompts based on segment type."""
-        
+
+        host_personas = self._get_host_personas(host_1_name, host_2_name)
+
         if is_opening:
             if is_first_episode:
                 system_prompt = (
                     f"You are an AI assistant generating the first-episode opening script for '{self._podcast_name}'. "
                     f"Each section should explicitly include the speaker's name ({host_1_name} or {host_2_name}) followed by a colon and dialogue.\n"
-                    f"Your script should introduce the show, delve into its concept, and give insights on what the audience can expect in future episodes."
+                    f"Your script should introduce the show, delve into its concept, and give insights on what the audience can expect in future episodes.\n\n"
+                    f"{host_personas}"
                 )
                 user_prompt = (
                     f"{self._user_instructions}\n\n"
-                    f"This is the first episode of '{self._podcast_name}'. Provide a welcoming introduction to the show, explaining its concept and the value it offers. "
-                    f"Hosts: {host_1_name}(male) and {host_2_name}(female)\n"
+                    f"This is the first episode of '{self._podcast_name}'. Provide a welcoming introduction to the show, explaining its concept and the value it offers.\n"
                     f"Use explicit speaker tags, e.g., '{host_1_name}: [Dialogue]', '{host_2_name}: [Dialogue]'.\n"
                     f"Content to discuss:\n{input_texts}\n"
-                    f"This is just the opening segment of a long single episode so do not include any ending or conclusion of the episode."
+                    f"This is just the opening segment of a long single episode so do not include any ending or conclusion of the episode.\n"
+                    f"Show their personality differences even in the intro - {host_1_name} excited about what's coming, {host_2_name} keeping expectations grounded."
                 )
             else:
                 system_prompt = (
                     f"You are an AI assistant generating an opening script for the ongoing episode of '{self._podcast_name}'.\n"
                     f"Each section should explicitly include the speaker's name ({host_1_name} or {host_2_name}) followed by a colon and dialogue.\n"
-                    f"Set the context for today's topics and welcome the audience."
+                    f"Set the context for today's topics and welcome the audience.\n\n"
+                    f"{host_personas}"
                 )
                 user_prompt = (
                     f"{self._user_instructions}\n\n"
-                    f"Hosts: {host_1_name} and {host_2_name}\n"
                     f"Opening content: {input_texts}\n\n"
                     f"Provide a welcoming introduction without repeating introductory information from the first episode.\n"
-                    f"Use explicit speaker tags, e.g., '{host_1_name}: [Dialogue]', '{host_2_name}: [Dialogue]'."
+                    f"Use explicit speaker tags, e.g., '{host_1_name}: [Dialogue]', '{host_2_name}: [Dialogue]'.\n"
+                    f"Tease the tension - hint at what they'll disagree about today."
                 )
         elif is_ending:
             system_prompt = (
                 f"You are an AI assistant generating the closing script for an episode of '{self._podcast_name}'. "
                 f"Summarize the main points, thank the audience, and offer any final thoughts.\n"
-                f"Each section should explicitly include the speaker's name ({host_1_name} or {host_2_name}) followed by a colon and dialogue."
+                f"Each section should explicitly include the speaker's name ({host_1_name} or {host_2_name}) followed by a colon and dialogue.\n\n"
+                f"{host_personas}"
             )
             user_prompt = (
                 f"{self._user_instructions}\n\n"
-                f"Hosts: {host_1_name} and {host_2_name}\n"
                 f"Ending content: {input_texts}\n\n"
                 f"Ensure this is a concluding segment, wrapping up the discussion and leaving the audience with a closing message.\n"
-                f"Use explicit speaker tags, e.g., '{host_1_name}: [Dialogue]', '{host_2_name}: [Dialogue]'."
+                f"Use explicit speaker tags, e.g., '{host_1_name}: [Dialogue]', '{host_2_name}: [Dialogue]'.\n\n"
+                f"IMPORTANT FOR ENDING:\n"
+                f"- Have each host make ONE bold prediction about something they discussed (and disagree on likelihood)\n"
+                f"- Reference any callbacks to past predictions if mentioned in the content\n"
+                f"- {host_1_name} should end optimistic, {host_2_name} should add a cautionary note\n"
+                f"- Tease what they'll be watching for next time"
             )
         elif is_segment:
             system_prompt = (
                 f"You are an AI assistant generating a podcast segment script for the ongoing episode of '{self._podcast_name}'.\n"
                 f"Each section should explicitly include the speaker's name ({host_1_name} or {host_2_name}) followed by a colon and dialogue.\n"
                 f"This segment is part of a larger conversation within a single episode. Avoid starting or ending the segment with "
-                f"phrases like 'Welcome back' or 'Thanks for listening.' Ensure smooth continuity as part of an ongoing discussion."
+                f"phrases like 'Welcome back' or 'Thanks for listening.' Ensure smooth continuity as part of an ongoing discussion.\n\n"
+                f"{host_personas}"
             )
             user_prompt = (
                 f"{self._user_instructions}\n\n"
-                f"Hosts: {host_1_name} and {host_2_name}\n"
                 f"This is a part of a larger conversation within a single episode. Do not add any episode opening content or episode ending content.\n"
                 f"Topic for this segment: {input_texts}\n\n"
-                f"Encourage the hosts to engage in a deep dialogue on this topic, sharing personal insights and experiences, and ensuring "
-                f"a dynamic interaction that connects smoothly with the rest of the episode.\n"
-                f"Use layman's language to explain any technology concept and make it simple to understand by normal person.\n"
+                f"SEGMENT REQUIREMENTS:\n"
+                f"- Deep dive into this ONE topic (don't rush to cover everything)\n"
+                f"- Include at least ONE genuine disagreement between hosts\n"
+                f"- {host_1_name} should identify an opportunity or upside\n"
+                f"- {host_2_name} should raise a concern or risk\n"
+                f"- Use specific facts/quotes from the content as debate points\n"
+                f"- Use layman's language to explain any technology concept\n"
+                f"- End the segment with a clear transition, not a conclusion\n\n"
                 f"Use explicit speaker tags, e.g., '{host_1_name}: [Dialogue]', '{host_2_name}: [Dialogue]'."
             )
         else:
             system_prompt = (
-                f"You are an AI assistant that generates insightful and engaging podcast scripts in the style of All-in Podcasts.\n"
+                f"You are an AI assistant that generates insightful and engaging podcast scripts in the style of All-in Podcast.\n"
                 f"The podcast name is '{self._podcast_name}' and tagline is '{self._podcast_tagline}'. The conversation should be insightful, dynamic, and engaging.\n"
-                f"Each section should explicitly include the speaker's name ({host_1_name} or {host_2_name}) followed by a colon and dialogue."
+                f"Each section should explicitly include the speaker's name ({host_1_name} or {host_2_name}) followed by a colon and dialogue.\n\n"
+                f"{host_personas}"
             )
             user_prompt = (
                 f"{self._user_instructions}\n\n"
-                f"Hosts: {host_1_name}(male) and {host_2_name}(female)\n"
                 f"{input_texts}\n\n"
-                f"Encourage the hosts to engage in a rich dialogue, exploring topics deeply, sharing personal insights and experiences. "
-                f"Use layman's language to explain any technology concept and make it simple to understand by a normal person.\n"
+                f"SCRIPT REQUIREMENTS:\n"
+                f"- Focus on DEPTH over breadth - better to cover 3 topics well than 10 superficially\n"
+                f"- Each topic should have genuine back-and-forth debate\n"
+                f"- Include specific numbers, quotes, and facts from the content\n"
+                f"- {host_1_name} pushes optimistic takes, {host_2_name} provides counterpoints\n"
+                f"- At least 2-3 moments where they genuinely disagree\n"
+                f"- Make predictions about what happens next (and disagree on them)\n"
+                f"- Use layman's language to explain technology concepts\n\n"
                 f"Use explicit speaker tags, e.g., '{host_1_name}: [Dialogue]', '{host_2_name}: [Dialogue]'."
             )
-        
+
         return system_prompt, user_prompt
     
     @retry(

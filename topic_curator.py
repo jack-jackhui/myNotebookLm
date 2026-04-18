@@ -350,3 +350,29 @@ def curated_to_dict(story: CuratedStory) -> Dict[str, Any]:
         'key_quotes': story.key_quotes,
         'all_links': story.get_all_links(),
     }
+
+
+def format_single_story_for_prompt(story: CuratedStory) -> str:
+    """Format a single curated story for prompt inclusion."""
+    sources_text = "\n".join([
+        f"  - {s.source}: {s.title}"
+        for s in story.sources[:3]  # Limit to top 3 sources
+    ])
+    
+    key_facts = story.key_facts[:5] if story.key_facts else []
+    facts_text = "\n".join([f"  • {fact}" for fact in key_facts]) if key_facts else "  (no key facts extracted)"
+    
+    return f"""
+STORY: {story.title}
+Category: {story.category}
+Significance Score: {story.significance_score:.1f}
+
+Sources ({len(story.sources)} total):
+{sources_text}
+
+Key Facts:
+{facts_text}
+
+Combined Content Summary:
+{story.combined_summary[:1500] if story.combined_summary else "(no summary)"}
+"""

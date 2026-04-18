@@ -22,7 +22,7 @@ from datetime import datetime
 
 # Import new modules for improved podcast generation
 from story_arc import create_episode_arc, format_arc_for_prompt
-from topic_curator import select_top_stories, format_curated_stories_for_prompt, curated_to_dict
+from topic_curator import select_top_stories, format_curated_stories_for_prompt, format_single_story_for_prompt, curated_to_dict
 from episode_memory import get_memory_manager
 
 logger = logging.getLogger(__name__)
@@ -124,7 +124,7 @@ GENERATION INSTRUCTIONS:
 
         # Create topics dict from curated stories for iterative generation
         topics = {
-            f"Story {i+1}: {s.title[:50]}": curated_prompt
+            f"Story {i+1}: {s.title[:50]}": format_single_story_for_prompt(s)
             for i, s in enumerate(top_stories)
         }
         print(f"\n--- Topics for Generation ---")

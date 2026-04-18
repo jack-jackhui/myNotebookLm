@@ -354,17 +354,21 @@ def curated_to_dict(story: CuratedStory) -> Dict[str, Any]:
 
 def format_single_story_for_prompt(story: CuratedStory) -> str:
     """Format a single curated story for prompt inclusion."""
-    sources_text = "\n".join([
-        f"  - {s.source}: {s.title}"
-        for s in story.sources[:3]  # Limit to top 3 sources
-    ])
+    # sources is a list of dicts with keys: source, title, link, etc.
+    sources_lines = []
+    for s in story.sources[:3]:
+        src_name = s.get("source", "Unknown")
+        src_title = s.get("title", "No title")
+        sources_lines.append(f"  - {src_name}: {src_title}")
+    sources_text = "\n".join(sources_lines) if sources_lines else "  (no sources)"
     
     key_facts = story.key_facts[:5] if story.key_facts else []
-    facts_text = "\n".join([f"  • {fact}" for fact in key_facts]) if key_facts else "  (no key facts extracted)"
+    facts_text = "\n".join([f"  - {fact}" for fact in key_facts]) if key_facts else "  (no key facts extracted)"
+    
+    content_preview = story.content[:2000] if story.content else "(no content)"
     
     return f"""
 STORY: {story.title}
-Category: {story.category}
 Significance Score: {story.significance_score:.1f}
 
 Sources ({len(story.sources)} total):
@@ -373,6 +377,6 @@ Sources ({len(story.sources)} total):
 Key Facts:
 {facts_text}
 
-Combined Content Summary:
-{story.combined_summary[:1500] if story.combined_summary else "(no summary)"}
+Full Content:
+{content_preview}
 """

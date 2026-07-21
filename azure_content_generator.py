@@ -6,6 +6,7 @@ import logging
 from typing import Dict, Any, Optional
 
 from generic_content_generator import ContentGenerator
+from llm_provider_chain import OrderedLLMRouter
 
 logger = logging.getLogger(__name__)
 
@@ -51,6 +52,18 @@ class AzureContentGenerator(ContentGenerator):
         super().__init__(config=conversation_config)
         
         api_config = api_config or {}
+
+        # Opt into the centralized chain only when explicitly configured. This
+        # preserves legacy single-provider behavior for existing deployments.
+        self.provider_router = None
+        if os.getenv("LLM_PROVIDER_ORDER"):
+            self.provider_router = OrderedLLMRouter.from_env()
+            self.model_name = self.provider_router.providers[0].model
+            self.is_reasoning = is_reasoning_model(self.model_name)
+            self.use_inference_sdk = False
+            self.client = None
+            logger.info("Using ordered LLM chain: %s", self.provider_router.chain_description)
+            return
         
         # Check for new Azure AI Inference config first
         self.azure_ai_endpoint = os.getenv("AZURE_AI_ENDPOINT")
@@ -111,11 +124,22 @@ class AzureContentGenerator(ContentGenerator):
         logger.debug(f"Adjusted tokens from {max_tokens} to {adjusted} for reasoning model")
         return adjusted
     
+    def _call_llm_with_retry(self, messages: list, max_tokens: int, temperature: float = 0.7) -> str:
+        """Avoid outer retries when the ordered router already bounds attempts."""
+        if self.provider_router is not None:
+            return self._call_llm(messages, max_tokens, temperature)
+        return super()._call_llm_with_retry(messages, max_tokens, temperature)
+
     def _call_llm(self, messages: list, max_tokens: int, temperature: float = 0.7) -> str:
         """Make Azure OpenAI API call using the appropriate SDK."""
         
         # Adjust tokens for reasoning models
         effective_tokens = self._adjust_tokens_for_reasoning(max_tokens)
+
+        if self.provider_router is not None:
+            return remove_think_blocks(
+                self.provider_router.complete(messages, effective_tokens, temperature)
+            )
         
         if self.use_inference_sdk:
             # Convert messages to Azure AI Inference format

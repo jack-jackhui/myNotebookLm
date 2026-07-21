@@ -151,6 +151,26 @@ def main():
         
         conv_config = load_conversation_config()
         print(f"  {GREEN}✓{RESET} load_conversation_config() works")
+
+        # A configured provider chain must be wired through the application
+        # generator, not merely present in the image. This catches stale host
+        # bind mounts that can silently mask the chain-aware implementation.
+        configured_order = os.getenv("LLM_PROVIDER_ORDER", "").strip()
+        if configured_order:
+            from azure_content_generator import AzureContentGenerator
+
+            generator = AzureContentGenerator(conversation_config={})
+            router = getattr(generator, "provider_router", None)
+            if router is None:
+                raise RuntimeError("LLM_PROVIDER_ORDER is set but AzureContentGenerator is not using OrderedLLMRouter")
+
+            expected_order = [name.strip() for name in configured_order.split(",") if name.strip()]
+            actual_order = [provider.name for provider in router.providers]
+            if actual_order != expected_order:
+                raise RuntimeError(
+                    f"Configured LLM provider order mismatch: expected {expected_order}, got {actual_order}"
+                )
+            print(f"  {GREEN}✓{RESET} ordered LLM router active: {' -> '.join(actual_order)}")
         
     except Exception as e:
         print(f"  {RED}✗{RESET} Import error: {e}")

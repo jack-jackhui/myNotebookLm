@@ -120,3 +120,35 @@ def test_azure_uses_responses_input_and_gemini_preserves_system_instruction(monk
     assert azure_payload["input"][0]["role"] == "system"
     assert gemini_payload["systemInstruction"]["parts"][0]["text"] == "Be concise"
     assert gemini_payload["contents"][0]["role"] == "user"
+
+
+def test_azure_generator_uses_ordered_router_when_configured(monkeypatch):
+    from azure_content_generator import AzureContentGenerator
+
+    class FakeRouter:
+        providers = [ProviderConfig("azure", "azure_responses", "gpt-5.6-sol", "https://azure.test", "key")]
+        chain_description = "azure/gpt-5.6-sol"
+
+        def __init__(self):
+            self.calls = []
+
+        def complete(self, messages, max_tokens, temperature):
+            self.calls.append((messages, max_tokens, temperature))
+            return "OK"
+
+    fake_router = FakeRouter()
+    monkeypatch.setenv("LLM_PROVIDER_ORDER", "azure")
+    monkeypatch.setattr(OrderedLLMRouter, "from_env", classmethod(lambda cls, client=None: fake_router))
+
+    generator = AzureContentGenerator(conversation_config={})
+    result = generator._call_llm(
+        [{"role": "user", "content": "Say OK"}],
+        max_tokens=32,
+        temperature=0.0,
+    )
+
+    assert generator.provider_router is fake_router
+    assert result == "OK"
+    assert len(fake_router.calls) == 1
+    # GPT-5.x reasoning headroom is applied before routing.
+    assert fake_router.calls[0][1] == 1000

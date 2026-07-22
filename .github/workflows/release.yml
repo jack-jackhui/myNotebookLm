@@ -1,36 +1,310 @@
-# Release Workflow - Creates GitHub releases on version tags
-# To release: git tag v1.0.0 && git push origin v1.0.0
-
-name: Release
+name: Create Release
 
 on:
-  push:
-    tags:
-      - 'v*'
+  workflow_dispatch:
+    inputs:
+      bump:
+        description: Semantic version increment
+        required: true
+        type: choice
+        options:
+          - patch
+          - minor
+          - major
+        default: patch
+      dry_run:
+        description: Validate and calculate the release without publishing
+        required: true
+        type: boolean
+        default: true
+
+concurrency:
+  group: release
+  cancel-in-progress: false
 
 permissions:
-  contents: write
+  contents: read
 
 jobs:
-  release:
+  prepare:
+    name: Prepare release
     runs-on: ubuntu-latest
+    outputs:
+      current_version: ${{ steps.version.outputs.current_version }}
+      next_version: ${{ steps.version.outputs.next_version }}
+      release_tag: ${{ steps.version.outputs.release_tag }}
+      release_sha: ${{ steps.version.outputs.release_sha }}
     steps:
-      - uses: actions/checkout@v4
+      - name: Check out selected commit
+        uses: actions/checkout@v4
         with:
-          fetch-depth: 0  # Full history for changelog
+          fetch-depth: 0
 
-      - name: Set up Python
+      - name: Verify current main commit
+        shell: bash
+        run: |
+          set -euo pipefail
+          if [[ "$GITHUB_REF" != "refs/heads/main" ]]; then
+            echo "Releases must be dispatched from the main branch, not $GITHUB_REF" >&2
+            exit 1
+          fi
+
+          git fetch --no-tags origin main
+          remote_main=$(git rev-parse origin/main)
+          checked_out=$(git rev-parse HEAD)
+          if [[ "$checked_out" != "$remote_main" || "$GITHUB_SHA" != "$remote_main" ]]; then
+            echo "Selected commit $checked_out is not current origin/main $remote_main" >&2
+            exit 1
+          fi
+
+      - name: Calculate and validate version
+        id: version
+        env:
+          GH_TOKEN: ${{ github.token }}
+          BUMP: ${{ inputs.bump }}
+        shell: bash
+        run: |
+          set -euo pipefail
+          git fetch --tags --force origin
+          git tag --list > /tmp/git-tags.txt
+          gh api --paginate "repos/$GITHUB_REPOSITORY/releases?per_page=100" \
+            --jq '.[].tag_name' > /tmp/release-tags.txt
+
+          python - <<'PY' >> "$GITHUB_OUTPUT"
+          import os
+          import re
+          import subprocess
+          from pathlib import Path
+
+          pattern = re.compile(r"^v(0|[1-9][0-9]*)\.(0|[1-9][0-9]*)\.(0|[1-9][0-9]*)$")
+          candidates = set()
+          for path in (Path("/tmp/git-tags.txt"), Path("/tmp/release-tags.txt")):
+              for value in path.read_text().splitlines():
+                  match = pattern.fullmatch(value.strip())
+                  if match:
+                      candidates.add(tuple(map(int, match.groups())))
+
+          if not candidates:
+              raise SystemExit("No strict vX.Y.Z tag or release exists; expected v1.0.0 baseline")
+
+          current = max(candidates)
+          if current < (1, 0, 0):
+              raise SystemExit(f"Latest version v{current[0]}.{current[1]}.{current[2]} is below v1.0.0 baseline")
+
+          major, minor, patch = current
+          bump = os.environ["BUMP"]
+          if bump == "major":
+              next_version = (major + 1, 0, 0)
+          elif bump == "minor":
+              next_version = (major, minor + 1, 0)
+          elif bump == "patch":
+              next_version = (major, minor, patch + 1)
+          else:
+              raise SystemExit(f"Unsupported bump: {bump}")
+
+          current_text = ".".join(map(str, current))
+          next_text = ".".join(map(str, next_version))
+          release_tag = f"v{next_text}"
+          if next_version <= current:
+              raise SystemExit(f"Calculated version {release_tag} is not greater than v{current_text}")
+
+          existing = subprocess.run(
+              ["git", "ls-remote", "--exit-code", "--tags", "origin", f"refs/tags/{release_tag}"],
+              stdout=subprocess.DEVNULL,
+              stderr=subprocess.DEVNULL,
+          )
+          if existing.returncode == 0:
+              raise SystemExit(f"Tag {release_tag} already exists on origin")
+
+          print(f"current_version={current_text}")
+          print(f"next_version={next_text}")
+          print(f"release_tag={release_tag}")
+          print(f"release_sha={os.environ['GITHUB_SHA']}")
+          PY
+
+          tag="$(grep '^release_tag=' "$GITHUB_OUTPUT" | tail -1 | cut -d= -f2-)"
+          if gh release view "$tag" --repo "$GITHUB_REPOSITORY" >/dev/null 2>&1; then
+            echo "Release $tag already exists" >&2
+            exit 1
+          fi
+
+      - name: Report planned release
+        env:
+          DRY_RUN: ${{ inputs.dry_run }}
+          CURRENT_VERSION: ${{ steps.version.outputs.current_version }}
+          NEXT_VERSION: ${{ steps.version.outputs.next_version }}
+          RELEASE_TAG: ${{ steps.version.outputs.release_tag }}
+          RELEASE_SHA: ${{ steps.version.outputs.release_sha }}
+        shell: bash
+        run: |
+          {
+            echo "## Release plan"
+            echo "- Current version: \`v$CURRENT_VERSION\`"
+            echo "- Next version: \`$RELEASE_TAG\`"
+            echo "- Commit: \`$RELEASE_SHA\`"
+            echo "- Dry run: \`$DRY_RUN\`"
+          } >> "$GITHUB_STEP_SUMMARY"
+
+  test:
+    name: Test Python ${{ matrix.python-version }}
+    needs: prepare
+    runs-on: ubuntu-latest
+    strategy:
+      fail-fast: false
+      matrix:
+        python-version: ["3.11", "3.12"]
+    steps:
+      - name: Check out exact release commit
+        uses: actions/checkout@v4
+        with:
+          ref: ${{ needs.prepare.outputs.release_sha }}
+
+      - name: Set up Python ${{ matrix.python-version }}
         uses: actions/setup-python@v5
         with:
-          python-version: '3.12'
+          python-version: ${{ matrix.python-version }}
+          cache: pip
 
       - name: Install dependencies
         run: |
           python -m pip install --upgrade pip
           pip install -r requirements.txt
+          pip install pytest ruff
 
-      - name: Create Release
-        uses: ncipollo/release-action@v1
+      - name: Lint with Ruff
+        run: ruff check . --exit-zero
+
+      - name: Check Python syntax
+        shell: bash
+        run: |
+          set -euo pipefail
+          python -m py_compile $(find . -name "*.py" -not -path "./.venv/*")
+
+      - name: Run tests
+        run: pytest tests/ -v
+
+  publish:
+    name: Publish ${{ needs.prepare.outputs.release_tag }}
+    needs: [prepare, test]
+    if: ${{ inputs.dry_run != true }}
+    runs-on: ubuntu-latest
+    permissions:
+      contents: write
+      packages: write
+    env:
+      REGISTRY: ghcr.io
+      IMAGE_NAME: ${{ github.repository_owner }}/mynotebooklm
+      RELEASE_SHA: ${{ needs.prepare.outputs.release_sha }}
+      RELEASE_TAG: ${{ needs.prepare.outputs.release_tag }}
+      VERSION: ${{ needs.prepare.outputs.next_version }}
+    steps:
+      - name: Check out exact tested commit
+        uses: actions/checkout@v4
         with:
-          generateReleaseNotes: true
-          makeLatest: true
+          ref: ${{ env.RELEASE_SHA }}
+          fetch-depth: 0
+
+      - name: Revalidate main and release uniqueness
+        env:
+          GH_TOKEN: ${{ github.token }}
+        shell: bash
+        run: |
+          set -euo pipefail
+          git fetch --no-tags origin main
+          if [[ "$(git rev-parse origin/main)" != "$RELEASE_SHA" ]]; then
+            echo "origin/main advanced after testing; dispatch a new release run" >&2
+            exit 1
+          fi
+          if git ls-remote --exit-code --tags origin "refs/tags/$RELEASE_TAG" >/dev/null 2>&1; then
+            echo "Tag $RELEASE_TAG already exists" >&2
+            exit 1
+          fi
+          if gh release view "$RELEASE_TAG" --repo "$GITHUB_REPOSITORY" >/dev/null 2>&1; then
+            echo "Release $RELEASE_TAG already exists" >&2
+            exit 1
+          fi
+
+      - name: Derive container tags
+        id: image
+        shell: bash
+        run: |
+          set -euo pipefail
+          major=${VERSION%%.*}
+          remainder=${VERSION#*.}
+          minor=${remainder%%.*}
+          {
+            echo "tags<<EOF"
+            echo "$REGISTRY/${IMAGE_NAME,,}:$VERSION"
+            echo "$REGISTRY/${IMAGE_NAME,,}:$major.$minor"
+            echo "$REGISTRY/${IMAGE_NAME,,}:$major"
+            echo "EOF"
+          } >> "$GITHUB_OUTPUT"
+
+      - name: Set up QEMU
+        uses: docker/setup-qemu-action@v3
+
+      - name: Set up Docker Buildx
+        uses: docker/setup-buildx-action@v3
+
+      - name: Log in to GHCR
+        uses: docker/login-action@v3
+        with:
+          registry: ${{ env.REGISTRY }}
+          username: ${{ github.actor }}
+          password: ${{ github.token }}
+
+      - name: Build and publish versioned images
+        uses: docker/build-push-action@v6
+        with:
+          context: .
+          platforms: linux/amd64,linux/arm64
+          push: true
+          tags: ${{ steps.image.outputs.tags }}
+          labels: |
+            org.opencontainers.image.source=${{ github.server_url }}/${{ github.repository }}
+            org.opencontainers.image.revision=${{ env.RELEASE_SHA }}
+            org.opencontainers.image.version=${{ env.VERSION }}
+          cache-from: type=gha
+          cache-to: type=gha,mode=max
+
+      - name: Create immutable GitHub release
+        env:
+          GH_TOKEN: ${{ github.token }}
+        shell: bash
+        run: |
+          set -euo pipefail
+          gh release create "$RELEASE_TAG" \
+            --repo "$GITHUB_REPOSITORY" \
+            --target "$RELEASE_SHA" \
+            --title "$RELEASE_TAG" \
+            --generate-notes \
+            --latest
+
+      - name: Report published release
+        shell: bash
+        run: |
+          {
+            echo "## Published $RELEASE_TAG"
+            echo "- Commit: \`$RELEASE_SHA\`"
+            echo "- Images: \`$REGISTRY/${IMAGE_NAME,,}:$VERSION\`, \`:${VERSION%.*}\`, and \`:${VERSION%%.*}\`"
+            echo "- Production deployment: not triggered by this workflow"
+          } >> "$GITHUB_STEP_SUMMARY"
+
+  dry-run-summary:
+    name: Dry-run result
+    needs: [prepare, test]
+    if: ${{ always() && inputs.dry_run == true && needs.prepare.result == 'success' && needs.test.result == 'success' }}
+    runs-on: ubuntu-latest
+    steps:
+      - name: Confirm no release was published
+        env:
+          RELEASE_TAG: ${{ needs.prepare.outputs.release_tag }}
+          RELEASE_SHA: ${{ needs.prepare.outputs.release_sha }}
+        shell: bash
+        run: |
+          {
+            echo "## Dry run passed"
+            echo "- Predicted release: \`$RELEASE_TAG\`"
+            echo "- Tested commit: \`$RELEASE_SHA\`"
+            echo "- No image, Git tag, GitHub Release, or production deployment was created."
+          } >> "$GITHUB_STEP_SUMMARY"

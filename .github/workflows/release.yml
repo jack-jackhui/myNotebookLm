@@ -251,7 +251,9 @@ jobs:
         with:
           registry: ${{ env.REGISTRY }}
           username: ${{ github.actor }}
-          password: ${{ github.token }}
+          # This package predates repository-linked GITHUB_TOKEN access.
+          # Use the same proven package-scoped credential as the deployment workflow.
+          password: ${{ secrets.GH_PAT }}
 
       - name: Build and publish versioned images
         uses: docker/build-push-action@v7
